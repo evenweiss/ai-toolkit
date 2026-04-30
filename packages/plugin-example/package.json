@@ -14,6 +14,14 @@
     "build": "tsc",
     "test": "echo \"No tests yet\""
   },
-  "files": ["dist"],
-  "keywords": ["ai-toolkit", "plugin"]
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "ai-toolkit",
+    "plugin"
+  ],
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
 }
