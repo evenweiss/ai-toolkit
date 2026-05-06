@@ -1,7 +1,6 @@
 /**
  * @ai-toolkit/skill-git-push
- * Code review + commit + push workflow
+ * Git push workflow
  */
 
-export { gitReview, type ReviewIssue, type ReviewResult } from './tools/review';
-export { gitCommit, type CommitOptions, type CommitResult } from './tools/commit';
+export { gitPush, type PushResult, type PushOptions, type ReviewResult, type ReviewIssue } from './tools/push';

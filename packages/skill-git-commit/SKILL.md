@@ -1,76 +1,64 @@
 # skill-git-commit
 
-> Smart commit message generator with Conventional Commits
+> Generate commit message from git diff
 
-**触发条件：** 当用户要求"生成提交信息"、"帮我写 commit"、"写提交信息"时调用。
+**触发条件：** 当需要"生成提交信息"、"写 commit message"、"生成 commit"时调用。
 
-## 核心规则
+## 工具
 
-1. **分析 diff** — 先 `git diff` 查看变更内容
-2. **判断 type** — 根据变更类型选择 `feat`/`fix`/`docs`/`refactor` 等
-3. **生成 subject** — ≤50字，祈使句，简洁描述变更
-4. **生成 body** — 中文，描述变更背景、原因和关键实现
+调用 `generateCommitMessage(diffOutput: string)` 函数：
 
-## 格式
+- 输入：当前项目的 `git diff` 输出
+- 输出：包含 `suggestions[]`、`files[]`、`rawDiff` 的结果
+
+## 使用方式
+
+```
+1. 执行 git diff 获取变更内容
+2. 调用 generateCommitMessage(diffOutput)
+3. 从返回结果中获取 suggestions
+4. 选择最合适的 suggestion 或组合多个
+```
+
+## 输出格式
+
+```typescript
+interface CommitSuggestion {
+  type: string;      // feat / fix / docs / ...
+  scope?: string;    // 模块名
+  subject: string;   // 标题
+  body: string;      // 中文描述
+  reason: string;     // 判断依据
+}
+
+interface GenerateResult {
+  suggestions: CommitSuggestion[];
+  files: { path: string; status: string }[];
+  rawDiff: string;
+}
+```
+
+## 示例
+
+**输入：** `git diff` 输出包含 `src/components/Button.ts` 的修改
+
+**输出：**
+```json
+{
+  "suggestions": [{
+    "type": "feat",
+    "scope": "components",
+    "subject": "update Button",
+    "body": "新功能。\n\n变更文件：\n- src/components/Button.ts",
+    "reason": "新功能"
+  }]
+}
+```
+
+## Conventional Commits 格式
 
 ```
 <type>(<scope>): <subject>
 
 <body>
-```
-
----
-
-## Type 判断标准
-
-| 变更 | type |
-|------|------|
-| 新功能 | `feat` |
-| bug 修复 | `fix` |
-| 文档更新 | `docs` |
-| 代码格式 | `style` |
-| 重构（不改变功能）| `refactor` |
-| 测试相关 | `test` |
-| 构建/工具变更 | `chore` |
-| 性能优化 | `perf` |
-| CI/CD | `ci` |
-
-## Scope 参考
-
-模块名：如 `auth`、`api`、`components`、`utils`、`config`
-
-无明确模块：省略 scope 或使用 `none`
-
-## 示例
-
-**变更：** 添加用户登录功能
-
-```
-feat(auth): 添加 JWT 登录接口
-
-实现基于 token 的登录鉴权，支持 token 刷新与异常态处理。
-```
-
-**变更：** 修复按钮点击无响应问题
-
-```
-fix(Button): 修复移动端点击无响应
-
-在 touchstart 事件中触发 click，避免 300ms 延迟。
-```
-
-**变更：** 重构 API 模块
-
-```
-refactor(api): 统一响应格式
-
-将各接口返回值统一为 { code, data, message } 结构。
-```
-
----
-
-## 与 skill-git-push 配合
-
-```
-skill-git-commit（生成提交信息）→ skill-git-push（执行提交推送）
 ```
