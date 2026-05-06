@@ -14,6 +14,12 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  packages/skill-git-push:
+    devDependencies:
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
 packages:
 
   typescript@6.0.3:

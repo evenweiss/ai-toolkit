@@ -1,0 +1,34 @@
+{
+  "name": "@ai-toolkit/skill-git-push",
+  "version": "0.1.0",
+  "description": "Code review + commit + push workflow for AI coding agents",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./skill": "./skill.md"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"No tests yet\""
+  },
+  "files": [
+    "dist",
+    "skill.md"
+  ],
+  "keywords": [
+    "ai-toolkit",
+    "skill",
+    "git",
+    "code-review"
+  ],
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}
