@@ -1,64 +1,49 @@
-# AI Toolkit
+# ai-toolkit
 
-AI tools plugins for agentic coding (OpenCode, Claude Code, Cursor, Trae, etc.)
+AI 编码 agent 技能仓库。给 Cursor、Claude Code、OpenCode、Trae 等 agent 用的可复用技能包。
 
 ## Skills
 
-| Skill | Description |
-|-------|-------------|
-| [skill-identity](packages/skill-identity/) | Detect project type and set agent identity — foundation for all tasks |
-| [skill-git-push](packages/skill-git-push/) | Code review + commit + push workflow |
-| [skill-git-commit](packages/skill-git-commit/) | Generate commit message from git diff |
-| [plugin-example](packages/plugin-example/) | Example plugin template |
+| Skill | 功能 | 依赖 |
+|-------|------|------|
+| skill-identity | 检测项目类型，设置 agent 身份 | 无 |
+| skill-git-push | 完整 git 提交流程：身份→review→commit→push | skill-identity, skill-git-commit |
+| skill-git-commit | 生成符合规范的 commit message | 无 |
 
-## 安装所有 Skill
+## 安装
 
-### 方式一：复制所有 SKILL.md 到编辑器
+### 一键安装（推荐）
+
+把以下任意一条指令丢给 AI 执行：
+
+```markdown
+安装 ai-toolkit skills（skill-identity、skill-git-push、skill-git-commit）到你的编辑器命令目录。
+- 仓库：https://github.com/evenweiss/ai-toolkit
+- 安装脚本：https://raw.githubusercontent.com/evenweiss/ai-toolkit/main/install.sh
+- 用法：curl -sSL .../install.sh | bash [editor]
+- editor 可选：cursor / claude / opencode / trae / all
+```
+
+或者直接终端执行：
 
 ```bash
-# Clone 仓库
-git clone https://github.com/evenweiss/ai-toolkit.git
-cd ai-toolkit
+# 安装到 Cursor
+curl -sSL https://raw.githubusercontent.com/evenweiss/ai-toolkit/main/install.sh | bash
 
-# Cursor - 安装所有 skill
-cp packages/skill-identity/SKILL.md ~/.cursor/commands/identity.md
-cp packages/skill-git-push/SKILL.md ~/.cursor/commands/git-push.md
-cp packages/skill-git-commit/SKILL.md ~/.cursor/commands/git-commit.md
+# 安装到 Claude Code
+curl -sSL https://raw.githubusercontent.com/evenweiss/ai-toolkit/main/install.sh | bash claude
 
-# Claude Code - 安装所有 skill
-cp packages/skill-identity/SKILL.md ~/.claude/commands/identity.md
-cp packages/skill-git-push/SKILL.md ~/.claude/commands/git-push.md
-cp packages/skill-git-commit/SKILL.md ~/.claude/commands/git-commit.md
+# 安装到所有编辑器
+curl -sSL https://raw.githubusercontent.com/evenweiss/ai-toolkit/main/install.sh | bash all
 ```
 
-### 方式二：作为 npm 包使用
+### 手动安装
 
-```bash
-git clone https://github.com/evenweiss/ai-toolkit.git
-cd ai-toolkit
-pnpm install
-pnpm -r build
-```
-
-然后在代码中引用：
-
-```typescript
-import { detectIdentity } from '@ai-toolkit/skill-identity';
-import { generateCommitMessage } from '@ai-toolkit/skill-git-commit';
-import { gitPush } from '@ai-toolkit/skill-git-push';
-```
+参考各 skill 目录下的 README.md。
 
 ## 开发
 
 ```bash
-# 安装依赖
 pnpm install
-
-# 构建所有包
-pnpm -r build
-
-# 构建指定包
-pnpm --filter @ai-toolkit/skill-identity build
-pnpm --filter @ai-toolkit/skill-git-commit build
-pnpm --filter @ai-toolkit/skill-git-push build
+pnpm build
 ```
