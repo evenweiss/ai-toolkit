@@ -6,14 +6,14 @@ Smart commit message generator with Conventional Commits format.
 
 ## 安装
 
-### 方式一：复制 SKILL.md 到编辑器（推荐）
+### 方式一：复制 SKILL.md 到编辑器
 
 ```bash
 # Cursor
-cp SKILL.md ~/.cursor/commands/git-commit.md
+cp packages/skill-git-commit/SKILL.md ~/.cursor/commands/git-commit.md
 
 # Claude Code
-cp SKILL.md ~/.claude/commands/git-commit.md
+cp packages/skill-git-commit/SKILL.md ~/.claude/commands/git-commit.md
 ```
 
 ### 方式二：Hermes Agent Skill
@@ -25,31 +25,51 @@ pnpm install
 pnpm --filter @ai-toolkit/skill-git-commit build
 ```
 
-## 工作流
+## 功能
 
+分析 `git diff` 输出，生成符合 Conventional Commits 规范的 commit message。
+
+## 工具函数
+
+```typescript
+import { generateCommitMessage } from '@ai-toolkit/skill-git-commit';
+
+// 输入：git diff 输出
+const result = await generateCommitMessage(diffOutput);
+
+// 输出：suggestions[] + files[] + rawDiff
 ```
-分析 git diff → 判断 type → 生成 subject → 生成 body
-```
 
-## 核心规则
+## 输出示例
 
-1. **先分析 diff** — 理解变更内容
-2. **判断 type** — feat / fix / docs / style / refactor 等
-3. **生成 subject** — ≤50字，祈使句
-4. **生成 body** — 中文描述变更背景、原因和关键实现
-
-## 格式
-
-```
-<type>(<scope>): <subject>
-
-<body>
+```json
+{
+  "suggestions": [{
+    "type": "feat",
+    "scope": "components",
+    "subject": "update Button",
+    "body": "新功能。\n\n变更文件：\n- src/components/Button.ts",
+    "reason": "新功能"
+  }]
+}
 ```
 
 ## 配合 skill-git-push
 
 ```
 skill-git-commit（生成提交信息）→ skill-git-push（执行提交推送）
+```
+
+## 文件结构
+
+```
+skill-git-commit/
+├── SKILL.md           # 指令
+├── src/
+│   ├── index.ts       # 导出
+│   └── generate.ts    # generateCommitMessage() 工具
+├── package.json
+└── README.md
 ```
 
 ## License
