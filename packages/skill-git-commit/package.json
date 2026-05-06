@@ -17,8 +17,7 @@
   },
   "files": [
     "dist",
-    "SKILL.md",
-    "WORKFLOW.md"
+    "SKILL.md"
   ],
   "keywords": [
     "ai-toolkit",
