@@ -1,7 +1,7 @@
 {
-  "name": "@ai-toolkit/skill-git-push",
+  "name": "@ai-toolkit/skill-git-commit",
   "version": "0.1.0",
-  "description": "Code review + commit + push workflow for AI coding agents",
+  "description": "Smart commit message generator with Conventional Commits format",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -9,15 +9,24 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./skill": "./SKILL.md",
-    "./workflow": "./WORKFLOW.md"
+    "./skill": "./SKILL.md"
   },
   "scripts": {
     "build": "tsc",
     "test": "echo \"No tests yet\""
   },
-  "files": ["dist", "SKILL.md", "WORKFLOW.md"],
-  "keywords": ["ai-toolkit", "skill", "git", "code-review"],
+  "files": [
+    "dist",
+    "SKILL.md",
+    "WORKFLOW.md"
+  ],
+  "keywords": [
+    "ai-toolkit",
+    "skill",
+    "git",
+    "commit",
+    "conventional-commits"
+  ],
   "peerDependencies": {
     "typescript": ">=5.0.0"
   },
