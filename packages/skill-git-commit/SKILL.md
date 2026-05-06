@@ -19,6 +19,8 @@
 <body>
 ```
 
+---
+
 ## Type 判断标准
 
 | 变更 | type |
@@ -37,7 +39,7 @@
 
 模块名：如 `auth`、`api`、`components`、`utils`、`config`
 
-无明确模块：`none`，如 `feat(none): 添加新功能`
+无明确模块：省略 scope 或使用 `none`
 
 ## 示例
 
@@ -56,6 +58,16 @@ fix(Button): 修复移动端点击无响应
 
 在 touchstart 事件中触发 click，避免 300ms 延迟。
 ```
+
+**变更：** 重构 API 模块
+
+```
+refactor(api): 统一响应格式
+
+将各接口返回值统一为 { code, data, message } 结构。
+```
+
+---
 
 ## 与 skill-git-push 配合
 
