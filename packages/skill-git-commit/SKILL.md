@@ -1,64 +1,57 @@
 # skill-git-commit
 
-> Generate commit message from git diff
+从 git diff 智能生成符合 Conventional Commits 规范的 commit message。
 
-**触发条件：** 当需要"生成提交信息"、"写 commit message"、"生成 commit"时调用。
+## Tool
 
-## 工具
-
-调用 `generateCommitMessage(diffOutput: string)` 函数：
-
-- 输入：当前项目的 `git diff` 输出
-- 输出：包含 `suggestions[]`、`files[]`、`rawDiff` 的结果
-
-## 使用方式
-
-```
-1. 执行 git diff 获取变更内容
-2. 调用 generateCommitMessage(diffOutput)
-3. 从返回结果中获取 suggestions
-4. 选择最合适的 suggestion 或组合多个
-```
-
-## 输出格式
-
-```typescript
-interface CommitSuggestion {
-  type: string;      // feat / fix / docs / ...
-  scope?: string;    // 模块名
-  subject: string;   // 标题
-  body: string;      // 中文描述
-  reason: string;     // 判断依据
-}
-
-interface GenerateResult {
-  suggestions: CommitSuggestion[];
-  files: { path: string; status: string }[];
-  rawDiff: string;
-}
-```
-
-## 示例
-
-**输入：** `git diff` 输出包含 `src/components/Button.ts` 的修改
-
-**输出：**
 ```json
 {
-  "suggestions": [{
-    "type": "feat",
-    "scope": "components",
-    "subject": "update Button",
-    "body": "新功能。\n\n变更文件：\n- src/components/Button.ts",
-    "reason": "新功能"
-  }]
+  "name": "skill_git_commit",
+  "description": "根据 git diff 内容生成 commit message 建议",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "diff": {
+        "type": "string",
+        "description": "git diff 输出（完整 unified diff 格式）"
+      }
+    }
+  }
 }
 ```
 
-## Conventional Commits 格式
+## 使用方式（terminal 工具）
 
+```bash
+git diff | node /path/to/skill-git-commit/dist/cli.js
+# 或指定 diff 文件
+node /path/to/skill-git-commit/dist/cli.js --diff /tmp/diff.txt
 ```
-<type>(<scope>): <subject>
 
-<body>
+**示例：**
+
+```bash
+git diff | node ~/projects/ai-toolkit/packages/skill-git-commit/dist/cli.js
+```
+
+**输出：**
+
+```json
+{
+  "commit": {
+    "full": "feat(auth): 添加登录功能\n\n实现基于 JWT 的登录鉴权流程。\n\n变更文件：\n+ src/auth/login.ts\n+ src/auth/token.ts",
+    "line": "feat(auth): 添加登录功能",
+    "body": "实现基于 JWT 的登录鉴权流程。\n\n变更文件：\n+ src/auth/login.ts\n+ src/auth/token.ts",
+    "type": "feat",
+    "scope": "auth",
+    "subject": "添加登录功能"
+  },
+  "stats": { "total": 2, "added": 2, "modified": 0, "deleted": 0 }
+}
+```
+
+## 安装
+
+```bash
+curl -sSL https://raw.githubusercontent.com/evenweiss/ai-toolkit/main/install.sh | bash
 ```

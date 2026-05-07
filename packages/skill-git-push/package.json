@@ -9,19 +9,27 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./skill": "./SKILL.md",
-    "./workflow": "./WORKFLOW.md"
+    "./skill": "./SKILL.md"
   },
   "scripts": {
     "build": "tsc",
     "test": "echo \"No tests yet\""
   },
-  "files": ["dist", "SKILL.md", "WORKFLOW.md"],
-  "keywords": ["ai-toolkit", "skill", "git", "code-review"],
+  "files": [
+    "dist",
+    "SKILL.md"
+  ],
+  "keywords": [
+    "ai-toolkit",
+    "skill",
+    "git",
+    "code-review"
+  ],
   "peerDependencies": {
     "typescript": ">=5.0.0"
   },
   "devDependencies": {
+    "@types/node": "^25.6.0",
     "typescript": "^6.0.3"
   }
 }

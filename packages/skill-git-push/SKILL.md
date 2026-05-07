@@ -1,81 +1,88 @@
 # skill-git-push
 
-> Code review + commit + push workflow
+完整 git 工作流：身份检测 → Code Review → 提交 → 推送。
 
-**触发条件：** 用户说"帮我提交代码"、"commit"、"git push"、"审查并推送"。
+## Tool
+
+```json
+{
+  "name": "skill_git_push",
+  "description": "执行完整 git 提交流程：先 review，发现问题则停止；通过则 commit 并 push",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "message": {
+        "type": "string",
+        "description": "可选，手动指定 commit message"
+      }
+    }
+  }
+}
+```
+
+## 使用方式（terminal 工具）
+
+```bash
+node /path/to/skill-git-push/dist/cli.js [--message "custom commit msg"]
+```
+
+**完整流程示例：**
+
+```bash
+# 1. 检测身份
+node ~/projects/ai-toolkit/packages/skill-identity/dist/cli.js
+
+# 2. 仅做 review（不提交）
+node ~/projects/ai-toolkit/packages/skill-git-push/dist/cli.js --review
+
+# 3. 执行完整 review + commit + push
+node ~/projects/ai-toolkit/packages/skill-git-push/dist/cli.js
+```
+
+**输出：**
+
+```json
+{
+  "success": true,
+  "review": {
+    "passed": true,
+    "projectType": "frontend",
+    "identity": "高级前端开发工程师",
+    "issues": [],
+    "summary": "Review 通过。检测到 42 行新增，3 行删除。"
+  },
+  "commitHash": "a1b2c3d4",
+  "commitMessage": "feat(ui): 优化按钮组件\n\n优化 Button 组件的样式与交互..."
+}
+```
+
+**Review 不通过时：**
+
+```json
+{
+  "success": false,
+  "review": {
+    "passed": false,
+    "issues": [
+      { "file": "src/auth/token.ts", "problem": "可能包含敏感信息硬编码", "suggestion": "使用环境变量", "severity": "error" }
+    ],
+    "summary": "Review 不通过。发现 1 个问题..."
+  },
+  "error": "Review 不通过，请先解决上述问题"
+}
+```
 
 ## 工作流
 
 ```
-1. [调用 skill-identity] ← 第一步
-2. git status / git diff --stat / git diff
-3. Code Review（发现问题则停止）
-4. [调用 skill-git-commit 生成 commit message]
-5. git add <files>
-6. git commit -m "<message>"
-7. git push
+1. skill-identity → 检测项目类型
+2. Code Review → 发现错误则停止
+3. skill-git-commit → 生成 commit message
+4. git add → git commit → git push
 ```
 
-## Step 1: 调用 skill-identity
-
-作为第一步，先调用 `skill-identity` 检测项目类型并设定身份。
-
-**所有后续行为必须优先遵循「当前项目规则文件」的约束。**
-
-## Step 2-3: Code Review
-
-**审查重点：**
-- bug / 逻辑漏洞 / 边界条件
-- 拼写错误 / 命名不一致
-- 与项目规范冲突
-- 潜在风险（安全、性能、兼容性）
-
-**判定：**
-- 发现问题 → 输出问题清单与解决方案，**停止**
-- 无问题 → 继续
-
-## Step 4: 调用 skill-git-commit
-
-使用 `skill-git-commit` skill 生成 commit message。
-
-输入：当前项目的 `git diff` 输出
-输出：Conventional Commits 格式的 commit message
-
-## Step 5-7: 执行提交流程
+## 安装
 
 ```bash
-git add <files>
-git commit -m "<message>"
-git push
-```
-
-**失败处理：**
-- 权限不足 → 检查 SSH/HTTPS 认证
-- 冲突 → `git pull --rebase` 后重试
-- 网络 → 检查代理设置
-- 保护分支 → 申请权限或推送其他分支
-
----
-
-## 输出格式
-
-```
-## 身份识别（来自 skill-identity）
-- 类型：前端项目
-- 身份：高级前端开发工程师
-
-## Review 结论
-✅ 通过 / ❌ 不通过（附问题清单）
-
-## 提交信息（来自 skill-git-commit）
-```
-<type>(<scope>): <subject>
-
-<body>
-```
-
-## 执行结果
-- git add: ✅/❌
-- git commit: ✅/❌ (hash: <sha>)
-- git push: ✅/❌
+curl -sSL https://raw.githubusercontent.com/evenweiss/ai-toolkit/main/install.sh | bash all
 ```
