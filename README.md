@@ -16,29 +16,24 @@ AI 编码 agent 技能仓库。给 Cursor、Claude Code、OpenCode、Trae 等 ag
 
 ```
 克隆仓库 https://github.com/evenweiss/ai-toolkit
-把每个 skill 的 SKILL.md 内容保存到你的编辑器命令目录中（AI 自动判断路径）。
-skill-identity → identity.md
-skill-git-push → git-push.md
-skill-git-commit → git-commit.md
-```
-
-## CLI 工具（可直接调用）
-
-```bash
-# 克隆后构建
-git clone https://github.com/evenweiss/ai-toolkit.git
 cd ai-toolkit
 pnpm install && pnpm build
+```
 
+## CLI 调用
+
+克隆构建后，用绝对路径调用：
+
+```bash
 # 检测身份
-node packages/skill-identity/dist/cli.js
-
-# 仅做 review
-node packages/skill-git-push/dist/cli.js --review
-
-# 完整流程
-node packages/skill-git-push/dist/cli.js
+node <克隆目录>/packages/skill-identity/dist/cli.js
 
 # 生成 commit message
-git diff | node packages/skill-git-commit/dist/cli.js
+git diff | node <克隆目录>/packages/skill-git-commit/dist/cli.js
+
+# 仅做 review
+node <克隆目录>/packages/skill-git-push/dist/cli.js --review
+
+# 完整流程
+node <克隆目录>/packages/skill-git-push/dist/cli.js
 ```
