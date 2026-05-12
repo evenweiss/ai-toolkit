@@ -7,33 +7,41 @@ AI 编码 agent 技能仓库。给 Cursor、Claude Code、OpenCode、Trae 等 ag
 | Skill | 功能 |
 |-------|------|
 | skill-identity | 检测项目类型，设置 agent 身份 |
-| skill-git-push | 完整 git 提交流程：身份→review→commit→push |
-| skill-git-commit | 生成符合规范的 commit message |
+| skill-git-commit | 从 git diff 生成符合 Conventional Commits 规范的 commit message |
+| skill-git-push | 完整 git 提交流程：身份 → review → commit → push |
 
 ## 安装
 
-把以下指令丢给 AI 执行：
-
-```
-克隆仓库 https://github.com/evenweiss/ai-toolkit
-cd ai-toolkit
-pnpm install && pnpm build
-```
-
-## CLI 调用
-
-克隆构建后，用绝对路径调用：
+### Claude Code
 
 ```bash
-# 检测身份
-node <克隆目录>/packages/skill-identity/dist/cli.js
+mkdir -p ~/.claude/commands
+cp <ai-toolkit目录>/skills/skill-identity/SKILL.md ~/.claude/commands/identity.md
+cp <ai-toolkit目录>/skills/skill-git-commit/SKILL.md ~/.claude/commands/git-commit.md
+cp <ai-toolkit目录>/skills/skill-git-push/SKILL.md ~/.claude/commands/git-push.md
+```
 
-# 生成 commit message
-git diff | node <克隆目录>/packages/skill-git-commit/dist/cli.js
+### Cursor
 
-# 仅做 review
-node <克隆目录>/packages/skill-git-push/dist/cli.js --review
+```bash
+mkdir -p ~/.cursor/commands
+cp <ai-toolkit目录>/skills/skill-identity/SKILL.md ~/.cursor/commands/identity.md
+cp <ai-toolkit目录>/skills/skill-git-commit/SKILL.md ~/.cursor/commands/git-commit.md
+cp <ai-toolkit目录>/skills/skill-git-push/SKILL.md ~/.cursor/commands/git-push.md
+```
 
-# 完整流程
-node <克隆目录>/packages/skill-git-push/dist/cli.js
+### OpenCode
+
+```bash
+mkdir -p ~/.opencode/skills
+cp -r <ai-toolkit目录>/skills/* ~/.opencode/skills/
+```
+
+### Trae
+
+```bash
+mkdir -p ~/.trae/commands
+cp <ai-toolkit目录>/skills/skill-identity/SKILL.md ~/.trae/commands/identity.md
+cp <ai-toolkit目录>/skills/skill-git-commit/SKILL.md ~/.trae/commands/git-commit.md
+cp <ai-toolkit目录>/skills/skill-git-push/SKILL.md ~/.trae/commands/git-push.md
 ```
