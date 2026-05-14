@@ -1,0 +1,18 @@
+{
+  "profiles": {
+    "npmjs": {
+      "comment": "发布到 npmjs：仅打包 identity、git-commit、git-push 三个 skill",
+      "publishConfig": {
+        "registry": "https://registry.npmjs.org/"
+      },
+      "skills": ["skill-identity", "skill-git-commit", "skill-git-push"]
+    },
+    "kfz": {
+      "comment": "发布到孔夫子私服：打包 monorepo 同步后的全部 skill",
+      "publishConfig": {
+        "registry": "http://maven.kongfz.com/repository/npm_local/"
+      },
+      "skills": "all"
+    }
+  }
+}

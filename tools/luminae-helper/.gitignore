@@ -1,1 +1,7 @@
 node_modules/
+
+# 由 scripts/sync-skills.js 从仓库根 skills/ 生成，真源见 ../../skills/
+skills/
+
+# prepare-publish.mjs 生成的多 profile 发布暂存目录
+.publish/

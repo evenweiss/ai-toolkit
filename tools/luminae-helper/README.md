@@ -61,18 +61,10 @@ luminae-helper
 
 ## 添加新的 Skill
 
-编辑 `src/lib/constants.js`：
+1. 在 **仓库根目录**（与 `tools/` 同级）创建 `skills/skill-your-skill/SKILL.md`（及可选 `README.md` 等）。此处为 Git 中的**唯一真源**。
+2. 在 `tools/luminae-helper` 下执行 `npm install` 或 `npm run sync-skills`，会把根目录 `skills/` 同步到本包内的 `skills/`（该目录已 `.gitignore`，勿在包内手改副本）。
+3. Skill 元数据与安装目标由 `src/lib/constants.js` 的 `discoverSkills()` 自动扫描包内 `skills/` 生成，一般无需再手写 `SKILLS` 数组。
 
-```js
-{
-  id: "skill-your-skill",
-  name: "Your Skill",
-  description: "描述",
-  installTargets: [
-    { toolId: "claude-code", destPath: () => join(homedir(), ".claude", "commands", "your-skill.md") },
-    { toolId: "opencode", /* ... */ },
-  ],
-}
-```
+## 发布 npm 包
 
-将 Skill 内容放在 `skills/skill-your-skill/SKILL.md` 中。
+`prepublishOnly` 会在发布前以 `--strict` 运行同步：必须在 monorepo 中能找到根目录 `skills/`，否则发布失败，避免打出不含 Skill 的空包。

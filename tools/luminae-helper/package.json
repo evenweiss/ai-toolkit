@@ -11,12 +11,19 @@
     "src/cli.js",
     "src/lib/*.js",
     "src/utils/*.js",
+    "scripts/sync-skills.js",
     "skills/",
     "README.md"
   ],
   "scripts": {
     "start": "node src/cli.js",
-    "dev": "node --watch src/cli.js"
+    "dev": "node --watch src/cli.js",
+    "sync-skills": "node scripts/sync-skills.js",
+    "prepare": "node scripts/sync-skills.js",
+    "prepublishOnly": "node scripts/sync-skills.js --strict",
+    "prepare-publish": "node scripts/prepare-publish.mjs",
+    "publish:npmjs": "node scripts/prepare-publish.mjs npmjs && npm publish -C .publish/npmjs",
+    "publish:kfz": "node scripts/prepare-publish.mjs kfz && npm publish -C .publish/kfz"
   },
   "keywords": [
     "claude",
