@@ -1,13 +1,13 @@
 ---
-name: Confluence Wiki
-description: 读写公司 Confluence Wiki 页面
+name: 孔网 Wiki
+description: 读写孔网 Wiki（wiki.kongfz.com，Confluence REST）
 ---
 
-# skill-confluence-wiki
+# skill-kongfz-wiki
 
-> Read and write pages on company Confluence Wiki (wiki.kongfz.com) via REST API
+> Read and write company Wiki pages (wiki.kongfz.com) via Confluence REST API
 
-**触发条件：** 用户分享 Confluence 页面链接、要求读取/搜索/创建/更新/删除 Wiki 页面时调用。
+**触发条件：** 用户分享孔网 Wiki 页面链接、或要求读取/搜索/创建/更新/删除 Wiki 页面时调用。
 
 ## 前置条件
 
@@ -24,7 +24,7 @@ export CONFLUENCE_BEARER_TOKEN="你的令牌"
 **如果环境变量未配置或为空，必须停止执行并提示用户：**
 
 > ⚠ 未检测到 CONFLUENCE_BASE_URL 或 CONFLUENCE_BEARER_TOKEN 环境变量。请在 ~/.zshrc 中配置后重试。
-> - CONFLUENCE_BASE_URL — Confluence 服务地址（如 https://wiki.kongfz.com）
+> - CONFLUENCE_BASE_URL — 孔网 Wiki 服务根地址（Confluence REST，如 https://wiki.kongfz.com）
 > - CONFLUENCE_BEARER_TOKEN — 个人访问令牌（登录 wiki → 个人资料 → 个人访问令牌 → 创建）
 
 ## API 基础

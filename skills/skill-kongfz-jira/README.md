@@ -1,6 +1,6 @@
-# skill-jira
+# skill-kongfz-jira
 
-Query and manage Jira projects, issues, epics, and workflows via REST API.
+Query and manage 孔网 Jira projects, issues, epics, and workflows via REST API.
 
 ## 触发条件
 
@@ -8,7 +8,7 @@ Query and manage Jira projects, issues, epics, and workflows via REST API.
 
 ## 前置条件
 
-需要配置 `JIRA_BEARER_TOKEN` 环境变量（Jira 个人访问令牌）。
+需要配置 `JIRA_BEARER_TOKEN` 环境变量（孔网 Jira 个人访问令牌）。
 
 获取方式：登录 jira.kongfz.com → 个人资料 → 个人访问令牌 → 创建令牌。
 
@@ -29,16 +29,16 @@ Query and manage Jira projects, issues, epics, and workflows via REST API.
 
 ```bash
 # Claude Code
-cp skills/skill-jira/SKILL.md ~/.claude/commands/jira.md
+cp skills/skill-kongfz-jira/SKILL.md ~/.claude/commands/kongfz-jira.md
 
 # Cursor
-cp skills/skill-jira/SKILL.md ~/.cursor/commands/jira.md
+cp skills/skill-kongfz-jira/SKILL.md ~/.cursor/commands/kongfz-jira.md
 
 # OpenCode
-cp -r skills/skill-jira ~/.opencode/skills/
+cp -r skills/skill-kongfz-jira ~/.opencode/skills/
 
 # Trae
-cp skills/skill-jira/SKILL.md ~/.trae/commands/jira.md
+cp skills/skill-kongfz-jira/SKILL.md ~/.trae/commands/kongfz-jira.md
 ```
 
 ## License

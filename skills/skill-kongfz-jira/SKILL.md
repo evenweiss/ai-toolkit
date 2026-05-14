@@ -1,13 +1,13 @@
 ---
-name: Jira
-description: 查询和操作公司 Jira 项目与 Issue
+name: 孔网 Jira
+description: 查询与操作孔网 Jira 项目与 Issue（jira.kongfz.com）
 ---
 
-# skill-jira
+# skill-kongfz-jira
 
 > Query and manage Jira projects, issues, epics, and workflows via REST API
 
-**触发条件：** 用户提到查询/创建/更新 Issue、Jira 搜索、Epic/Bug 统计、项目进度、Jira 链接时调用。
+**触发条件：** 用户提到孔网 Jira：查询/创建/更新 Issue、JQL 搜索、Epic/Bug 统计、项目进度、Jira 链接等时调用。
 
 ## 前置条件
 
@@ -24,7 +24,7 @@ export JIRA_BEARER_TOKEN="你的令牌"
 **如果环境变量未配置或为空，必须停止执行并提示用户：**
 
 > ⚠ 未检测到 JIRA_BASE_URL 或 JIRA_BEARER_TOKEN 环境变量。请在 ~/.zshrc 中配置后重试。
-> - JIRA_BASE_URL — Jira 服务地址（如 https://jira.kongfz.com）
+> - JIRA_BASE_URL — 孔网 Jira 服务根地址（如 https://jira.kongfz.com）
 > - JIRA_BEARER_TOKEN — 个人访问令牌（登录 jira → 个人资料 → 个人访问令牌 → 创建）
 
 ## API 基础

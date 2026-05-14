@@ -1,9 +1,30 @@
 import chalk from "chalk";
 import gradientString from "gradient-string";
-import { checkbox as Checkbox, select as Select, input, Separator } from "@inquirer/prompts";
+import { select as Select, input, Separator } from "@inquirer/prompts";
 import wcswidth from "wcwidth";
+import checkboxWithActionRows from "./checkbox-with-action-rows.js";
 import { SKILLS, TOOLS, detectInstalledTools } from "./constants.js";
 import { installSkillToTool, uninstallSkillFromTool } from "./installer.js";
+
+/**
+ * 传给所有 @inquirer prompt 的 context。
+ * `clearPromptOnDone: true` 会在 prompt 结束时用 ANSI 擦除整块 TUI 占用的行，
+ * 避免默认「只换行」导致旧菜单残留在终端上，与下一屏叠在一起（尤其快速按方向键时）。
+ * @type {{ clearPromptOnDone: boolean }}
+ */
+const inquirerContext = { clearPromptOnDone: true };
+
+/**
+ * 在关闭一个 inquirer prompt 之后、再 `printBanner` 或打开下一个 prompt 之前调用。
+ * 使用 `setImmediate` 推迟到当前轮询阶段之后，让 readline 的 `close`、MuteStream 的 flush
+ * 以及 stdin 里积压的字节先落稳（与 Inquirer.js #1303 讨论的背景一致），降低两屏叠画的概率。
+ * @returns {Promise<void>}
+ */
+function afterPromptFlush() {
+  return new Promise((resolve) => {
+    setImmediate(resolve);
+  });
+}
 
 function printBanner() {
   console.clear();
@@ -23,115 +44,58 @@ function padChoice(text, targetWidth = 20) {
 }
 
 /**
- * Run a Checkbox prompt while listening for Escape keypresses.
+ * 解析带功能行的多选结果：`__back__` / `__exit__` 来自「焦点在该行时按回车」的即时提交；
+ * 普通 Skill/工具 id 来自多选勾选后回车。若数组中同时含功能值与普通 id，优先按功能处理。
  *
- * How it works:
- * - Sets stdin to raw mode for up to `timeoutMs` (or until the prompt resolves).
- * - If Esc (0x1b) is pressed first → resolve as "back".
- * - If Ctrl+C is pressed → throws ExitPromptError (caught by caller).
- * - If the checkbox resolves first → clean up raw mode and return the result.
- *
- * @param {Function} promptFn  - async function that returns the inquirer promise
- * @param {number}   timeoutMs - max ms to wait for Esc before giving up
+ * @param {unknown} ans
  * @returns {"back"|"exit"|string[]}
- */
-async function checkboxWithEsc(promptFn, timeoutMs = 5000) {
-  let escReceived = false;
-  let rawCleanup = null;
-
-  const escListener = (data) => {
-    // In raw mode, standalone Esc key sends a single 0x1b byte.
-    // Arrow keys and other escape sequences send multi-byte sequences
-    // starting with 0x1b (e.g. \x1b[A for up arrow), so we only
-    // match a single-byte 0x1b to avoid false positives.
-    if (Buffer.isBuffer(data) && data.length === 1 && data[0] === 0x1b) {
-      escReceived = true;
-    }
-  };
-
-  // Try to set raw mode; if not a TTY this is a no-op
-  const tryRawMode = () => {
-    try {
-      if (!process.stdin.isTTY) return false;
-      process.stdin.setRawMode(true);
-      process.stdin.on("data", escListener);
-      rawCleanup = () => {
-        process.stdin.removeListener("data", escListener);
-        process.stdin.setRawMode(false);
-      };
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  const isRaw = tryRawMode();
-
-  const result = await Promise.race([
-    // Esc race: wait at most timeoutMs for Esc, then give up
-    new Promise((resolve) => {
-      if (!isRaw) return setTimeout(() => resolve("esc_timeout"), timeoutMs);
-      const timer = setTimeout(() => {
-        rawCleanup && rawCleanup();
-        resolve("esc_timeout");
-      }, timeoutMs);
-      // Store timer id so we can clear it if prompt resolves first
-      rawCleanup._timer = timer;
-    }),
-    // Prompt race: resolve when the checkbox prompt resolves
-    promptFn().then((val) => {
-      if (isRaw && rawCleanup) {
-        clearTimeout(rawCleanup._timer);
-        rawCleanup();
-      }
-      return val;
-    }),
-  ]);
-
-  if (escReceived) return "back";
-  // 与 Esc 监听竞态的另一支路：stdin 非 TTY 时 isRaw 为 false，约 timeoutMs 后会 resolve("esc_timeout")；
-  // 若用户已提交多选，通常另一支路会先返回数组；但若仅超时或异常竞态，不能把字符串交给后续 parseCheckboxResult，
-  // 否则 stepSelectTools 会得到非数组，进而在 toolIds.map 处抛错。
-  if (result === "esc_timeout") return "back";
-  return result;
-}
-
-/**
- * Parse checkbox result: check for navigation values.
- * Returns "back" | "exit" | string[] (selected ids)
  */
 function parseCheckboxResult(ans) {
   if (ans === "exit" || ans === "__exit__") return "exit";
   if (ans === "back" || ans === "__back__") return "back";
-  // 兜底：竞态或 inquirer 异常返回值不应穿透为「伪选中」
   if (ans === "esc_timeout") return "back";
   if (Array.isArray(ans)) {
     if (ans.includes("__exit__")) return "exit";
     if (ans.includes("__back__")) return "back";
-    return ans;
+    return ans.filter((x) => x !== "__back__" && x !== "__exit__");
   }
   return "back";
 }
 
 /**
- * Build checkbox choices with separator + navigation items.
- * Navigation items are disabled so they cannot be toggled with space.
- * They still appear in the list and can be focused with arrow keys;
- * pressing Enter on a disabled item shows the "cannot be selected" message
- * but since Esc detection runs concurrently, users can Esc to go back.
+ * 在列表末尾追加「返回 / 退出」两项（`value` 为 `__back__` / `__exit__`）。
+ * 由 `checkbox-with-action-rows` 渲染为功能行：方向键移上去后按回车即触发，空格不会勾选。
+ *
+ * @param {{ name: string, value: string }[]} items
+ * @param {string} backLabel
  */
 function withNavChoices(items, backLabel) {
   return [
     ...items,
     new Separator(),
-    { name: chalk.yellow(backLabel), value: "__back__", disabled: true },
-    { name: "✕  退出", value: "__exit__", disabled: true },
+    { name: chalk.yellow(backLabel), value: "__back__" },
+    { name: "✕  退出", value: "__exit__" },
   ];
+}
+
+/**
+ * 运行带功能行的多选 Checkbox（见 `checkbox-with-action-rows.js`）。
+ * Ctrl+C 时按项目惯例视为退出整段交互。
+ *
+ * @param {{ message: string, choices: unknown[], loop?: boolean, theme?: object }} config
+ * @returns {Promise<string[]>}
+ */
+async function runCheckbox(config) {
+  return checkboxWithActionRows(config, inquirerContext).catch((err) => {
+    if (err?.name === "ExitPromptError") return ["__exit__"];
+    return ["__exit__"];
+  });
 }
 
 // ── Step 1: Select skills (checkbox multi-select) ──
 async function stepSelectSkills() {
   while (true) {
+    await afterPromptFlush();
     printBanner();
     console.log(chalk.cyan.bold("━━━ 选择 Skill ━━━\n"));
 
@@ -145,17 +109,12 @@ async function stepSelectSkills() {
       style: { highlight: (t) => chalk.cyan(t) },
     };
 
-    const ans = await checkboxWithEsc(() =>
-      Checkbox({
-        message: "  选择 Skill (空格切换，回车确认):",
-        choices: withNavChoices(skillChoices, "↩  返回主菜单"),
-        loop: false,
-        theme,
-      }).catch((err) => {
-        if (err?.name === "ExitPromptError") return "exit";
-        return "exit";
-      })
-    );
+    const ans = await runCheckbox({
+      message: "  选择 Skill (空格多选，回车提交；底部「↩ 返回 / ✕ 退出」为功能行：移上去后按回车):",
+      choices: withNavChoices(skillChoices, "↩  返回主菜单"),
+      loop: false,
+      theme,
+    });
 
     const result = parseCheckboxResult(ans);
 
@@ -175,6 +134,7 @@ async function stepSelectSkills() {
 // ── Step 2: Select tools (checkbox multi-select) ──
 async function stepSelectTools(installedTools) {
   while (true) {
+    await afterPromptFlush();
     printBanner();
     console.log(chalk.cyan.bold("━━━ 选择目标工具 ━━━\n"));
 
@@ -188,17 +148,12 @@ async function stepSelectTools(installedTools) {
       style: { highlight: (t) => chalk.cyan(t) },
     };
 
-    const ans = await checkboxWithEsc(() =>
-      Checkbox({
-        message: "  选择工具 (空格切换，回车确认):",
-        choices: withNavChoices(toolChoices, "↩  返回上一步"),
-        loop: false,
-        theme,
-      }).catch((err) => {
-        if (err?.name === "ExitPromptError") return "exit";
-        return "exit";
-      })
-    );
+    const ans = await runCheckbox({
+      message: "  选择工具 (空格多选，回车提交；底部「↩ 返回 / ✕ 退出」为功能行：移上去后按回车):",
+      choices: withNavChoices(toolChoices, "↩  返回上一步"),
+      loop: false,
+      theme,
+    });
 
     const result = parseCheckboxResult(ans);
 
@@ -229,6 +184,7 @@ function asIdArray(v) {
 async function stepPreviewConfirm(skillIds, toolIds, installedTools, isUninstall) {
   const sids = asIdArray(skillIds);
   const tids = asIdArray(toolIds);
+  await afterPromptFlush();
   printBanner();
   const actionLabel = isUninstall ? "卸载" : "安装";
   console.log(chalk.cyan.bold("━━━ " + actionLabel + "预览 ━━━\n"));
@@ -238,15 +194,18 @@ async function stepPreviewConfirm(skillIds, toolIds, installedTools, isUninstall
   console.log("  " + chalk.bold("工具:") + "  " + toolNames);
   console.log();
 
-  const ans = await Select({
-    message: "  确认" + actionLabel + "？",
-    choices: [
-      { name: "✓  确认" + actionLabel, value: "confirm" },
-      { name: "↩  返回上一步", value: "back" },
-      { name: "✕  退出", value: "exit" },
-    ],
-    theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
-  }).catch(() => "back");
+  const ans = await Select(
+    {
+      message: "  确认" + actionLabel + "？",
+      choices: [
+        { name: "✓  确认" + actionLabel, value: "confirm" },
+        { name: "↩  返回上一步", value: "back" },
+        { name: "✕  退出", value: "exit" },
+      ],
+      theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
+    },
+    inquirerContext
+  ).catch(() => "back");
 
   return ans;
 }
@@ -255,6 +214,7 @@ async function stepPreviewConfirm(skillIds, toolIds, installedTools, isUninstall
 async function stepExecute(skillIds, toolIds, installedTools, isUninstall) {
   const sids = asIdArray(skillIds);
   const tids = asIdArray(toolIds);
+  await afterPromptFlush();
   printBanner();
   console.log();
   console.log(chalk.cyan.bold("━━━ 执行中 ━━━\n"));
@@ -308,6 +268,7 @@ async function stepExecute(skillIds, toolIds, installedTools, isUninstall) {
 async function runFlow(isUninstall) {
   const installedTools = detectInstalledTools().filter(t => t.installed);
   if (installedTools.length === 0) {
+    await afterPromptFlush();
     printBanner();
     console.log(chalk.yellow("\n  ⚠ 未检测到任何已安装的 AI 工具\n"));
     console.log(chalk.gray("  请先安装以下工具之一:\n"));
@@ -315,10 +276,13 @@ async function runFlow(isUninstall) {
       console.log("  " + chalk.cyan(t.name) + ": " + chalk.gray(t.installHint));
     });
     console.log();
-    await input({
-      message: "  按回车返回主菜单...",
-      theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
-    }).catch(() => {});
+    await input(
+      {
+        message: "  按回车返回主菜单...",
+        theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
+      },
+      inquirerContext
+    ).catch(() => {});
     return "back";
   }
 
@@ -356,17 +320,23 @@ async function runFlow(isUninstall) {
         }
       }
       if (allSuccess) {
-        await input({
-          message: "  按任意键退出...",
-          theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
-        }).catch(() => {});
+        await input(
+          {
+            message: "  按任意键退出...",
+            theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
+          },
+          inquirerContext
+        ).catch(() => {});
         return "exit";
       } else {
         console.log(chalk.red("  ❌ 重试 3 次后仍有失败，请手动检查。\n"));
-        await input({
-          message: "  按任意键返回主菜单...",
-          theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
-        }).catch(() => {});
+        await input(
+          {
+            message: "  按任意键返回主菜单...",
+            theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
+          },
+          inquirerContext
+        ).catch(() => {});
         return "back";
       }
     }
@@ -380,25 +350,30 @@ export async function runInteractive() {
   while (!exit) {
     printBanner();
 
-    const action = await Select({
-      message: "  选择操作:",
-      choices: [
-        { name: padChoice("📦  安装 Skill", 20), value: "install" },
-        { name: padChoice("🗑   卸载 Skill", 20), value: "uninstall" },
-        { name: padChoice("✕  退出", 20), value: "exit" },
-      ],
-      theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
-    }).catch(() => "exit");
+    const action = await Select(
+      {
+        message: "  选择操作:",
+        choices: [
+          { name: padChoice("📦  安装 Skill", 20), value: "install" },
+          { name: padChoice("🗑   卸载 Skill", 20), value: "uninstall" },
+          { name: padChoice("✕  退出", 20), value: "exit" },
+        ],
+        theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
+      },
+      inquirerContext
+    ).catch(() => "exit");
 
     if (action === "exit") {
       break;
     }
 
+    await afterPromptFlush();
     const result = await runFlow(action === "uninstall");
 
     if (result === "exit") {
       exit = true;
     }
+    await afterPromptFlush();
     // "back" or "done" → loop continues, show main menu again
   }
 
