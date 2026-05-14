@@ -141,6 +141,33 @@ function copySkillSubsets(skillIds, destSkillsRoot) {
 }
 
 /**
+ * 从根包 `bin` 字段解析 CLI 入口脚本路径（字符串形式或对象形式取第一个路径）。
+ * @param {string | Record<string, string> | undefined} baseBin
+ * @returns {string}
+ */
+function resolveBinEntryPath(baseBin) {
+  if (typeof baseBin === "string" && baseBin.trim()) {
+    return baseBin.trim();
+  }
+  if (baseBin && typeof baseBin === "object") {
+    for (const v of Object.values(baseBin)) {
+      if (typeof v === "string" && v.trim()) return v.trim();
+    }
+  }
+  return "src/cli.js";
+}
+
+/**
+ * 当发布包名与源码包名不同时，将 `bin` 的命令名改为与 `package.json#name` 一致（npm 全局命令来自 bin 的键名）。
+ * @param {string | Record<string, string> | undefined} baseBin
+ * @param {string} packageName
+ * @returns {Record<string, string>}
+ */
+function binMatchingPackageName(baseBin, packageName) {
+  return { [packageName]: resolveBinEntryPath(baseBin) };
+}
+
+/**
  * 基于根 package.json 生成「仅用于发布目录」的 manifest。
  * @param {object} basePkg
  * @param {{ packageName?: string, publishConfig?: object }} profile
@@ -151,7 +178,10 @@ function buildPublishPackageJson(basePkg, profile) {
 
   // 私服等场景可与 npmjs 使用不同包名，避免 registry 上名称冲突；未配置则沿用源码包名
   if (typeof profile.packageName === "string" && profile.packageName.trim()) {
-    out.name = profile.packageName.trim();
+    const pkgName = profile.packageName.trim();
+    out.name = pkgName;
+    // 全局/本地安装时，可执行文件名来自 bin 的键；与包名对齐，避免用户以为命令等于 name 却仍指向旧名
+    out.bin = binMatchingPackageName(basePkg.bin, pkgName);
   }
 
   // 发布目录内不再执行 monorepo 同步（路径会错），只保留对终端用户无副作用的脚本
