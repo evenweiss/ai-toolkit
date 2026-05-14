@@ -1,6 +1,6 @@
 {
   "name": "kfz-skill-helper",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Install AI skills to coding tools (Claude Code, Cursor, OpenCode, Trae, etc.)",
   "type": "module",
   "main": "src/cli.js",
