@@ -267,7 +267,7 @@ async function stepExecute(skillIds, toolIds, installedTools, isUninstall) {
   if (allSuccess) {
     console.log(chalk.green(TERM_GUTTER + "✅ 操作完成！\n"));
   } else {
-    console.log(chalk.yellow(TERM_GUTTER + "❌ 部分操作失败，请检查错误信息。\n"));
+    console.log(chalk.yellow(TERM_GUTTER + "⚠ 部分操作失败，请检查错误信息。\n"));
   }
 
   return allSuccess;
