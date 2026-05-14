@@ -11,23 +11,25 @@ description: 查询和操作公司 Jira 项目与 Issue
 
 ## 前置条件
 
-**必须配置个人访问令牌（Personal Access Token）：**
+**必须配置以下环境变量：**
 
 ```bash
 # 在 ~/.zshrc 或 ~/.bashrc 中添加：
+export JIRA_BASE_URL="https://jira.kongfz.com"
 export JIRA_BEARER_TOKEN="你的令牌"
 ```
 
 令牌获取方式：登录 jira.kongfz.com → 个人资料 → 个人访问令牌 → 创建令牌。
 
-**如果 `$JIRA_BEARER_TOKEN` 未配置或为空，必须停止执行并提示用户：**
+**如果环境变量未配置或为空，必须停止执行并提示用户：**
 
-> ⚠ 未检测到 JIRA_BEARER_TOKEN 环境变量。请在 ~/.zshrc 中配置 Jira 个人访问令牌后重试。
-> 获取方式：登录 jira.kongfz.com → 个人资料 → 个人访问令牌 → 创建令牌
+> ⚠ 未检测到 JIRA_BASE_URL 或 JIRA_BEARER_TOKEN 环境变量。请在 ~/.zshrc 中配置后重试。
+> - JIRA_BASE_URL — Jira 服务地址（如 https://jira.kongfz.com）
+> - JIRA_BEARER_TOKEN — 个人访问令牌（登录 jira → 个人资料 → 个人访问令牌 → 创建）
 
 ## API 基础
 
-- 基地址：`https://jira.kongfz.com/rest/api/2`
+- 基地址：`$JIRA_BASE_URL/rest/api/2`
 - 认证方式：`Authorization: Bearer $JIRA_BEARER_TOKEN`
 - 通用请求头：`-H "Content-Type: application/json" -H "Accept: application/json"`
 
@@ -35,7 +37,7 @@ export JIRA_BEARER_TOKEN="你的令牌"
 
 ```bash
 curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/myself" | jq '.displayName'
+  "$JIRA_BASE_URL/rest/api/2/myself" | jq '.displayName'
 ```
 
 ## 项目管理
@@ -44,28 +46,28 @@ curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
 
 ```bash
 curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/project" | jq -r '.[] | "\(.key)\t\(.name)"'
+  "$JIRA_BASE_URL/rest/api/2/project" | jq -r '.[] | "\(.key)\t\(.name)"'
 ```
 
 ### 获取项目详情
 
 ```bash
 curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/project/{projectKey}" | jq .
+  "$JIRA_BASE_URL/rest/api/2/project/{projectKey}" | jq .
 ```
 
 ### 获取项目版本列表
 
 ```bash
 curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/project/{projectKey}/versions" | jq .
+  "$JIRA_BASE_URL/rest/api/2/project/{projectKey}/versions" | jq .
 ```
 
 ### 获取项目组件
 
 ```bash
 curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/project/{projectKey}/components" | jq .
+  "$JIRA_BASE_URL/rest/api/2/project/{projectKey}/components" | jq .
 ```
 
 ## Issue 操作
@@ -74,7 +76,7 @@ curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
 
 ```bash
 curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/issue/{issueKey}?fields=summary,status,assignee,priority" | jq .
+  "$JIRA_BASE_URL/rest/api/2/issue/{issueKey}?fields=summary,status,assignee,priority" | jq .
 ```
 
 常用 fields：`summary`、`status`、`assignee`、`priority`、`description`、`created`、`updated`、`issuetype`、`labels`
@@ -85,7 +87,7 @@ curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
 curl -s -X POST \
   -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://jira.kongfz.com/rest/api/2/issue" \
+  "$JIRA_BASE_URL/rest/api/2/issue" \
   -d '{
     "fields": {
       "project": { "key": "PROJECT_KEY" },
@@ -104,7 +106,7 @@ curl -s -X POST \
 curl -s -X POST \
   -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://jira.kongfz.com/rest/api/2/issue" \
+  "$JIRA_BASE_URL/rest/api/2/issue" \
   -d '{
     "fields": {
       "project": { "key": "PROJECT_KEY" },
@@ -121,7 +123,7 @@ curl -s -X POST \
 curl -s -X PUT \
   -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://jira.kongfz.com/rest/api/2/issue/{issueKey}" \
+  "$JIRA_BASE_URL/rest/api/2/issue/{issueKey}" \
   -d '{"fields": {"summary": "更新后的标题"}}' -i
 ```
 
@@ -130,7 +132,7 @@ curl -s -X PUT \
 ```bash
 curl -s -X DELETE \
   -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/issue/{issueKey}" -i
+  "$JIRA_BASE_URL/rest/api/2/issue/{issueKey}" -i
 ```
 
 ## JQL 搜索
@@ -140,7 +142,7 @@ curl -s -X DELETE \
 ```bash
 # URL 编码的 JQL: project = SHOPA AND status = Open
 curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/search?jql=project%20%3D%20SHOPA%20AND%20status%20%3D%20Open&maxResults=20&fields=key,summary,status" | jq .
+  "$JIRA_BASE_URL/rest/api/2/search?jql=project%20%3D%20SHOPA%20AND%20status%20%3D%20Open&maxResults=20&fields=key,summary,status" | jq .
 ```
 
 ### POST 方式搜索（复杂查询，推荐）
@@ -149,7 +151,7 @@ curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
 curl -s -X POST \
   -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://jira.kongfz.com/rest/api/2/search" \
+  "$JIRA_BASE_URL/rest/api/2/search" \
   -d '{
     "jql": "project = SHOPA AND status in (\"To Do\", \"In Progress\") ORDER BY updated DESC",
     "startAt": 0,
@@ -199,7 +201,7 @@ curl -s -X POST \
 
 ```bash
 curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/issue/{issueKey}/transitions" | jq '.transitions[] | "\(.id)\t\(.name)"'
+  "$JIRA_BASE_URL/rest/api/2/issue/{issueKey}/transitions" | jq '.transitions[] | "\(.id)\t\(.name)"'
 ```
 
 ### 执行状态转换
@@ -208,7 +210,7 @@ curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
 curl -s -X POST \
   -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://jira.kongfz.com/rest/api/2/issue/{issueKey}/transitions" \
+  "$JIRA_BASE_URL/rest/api/2/issue/{issueKey}/transitions" \
   -d '{"transition": {"id": "转换ID"}}' -i
 ```
 
@@ -218,7 +220,7 @@ curl -s -X POST \
 
 ```bash
 curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/issue/{issueKey}/comment" | jq .
+  "$JIRA_BASE_URL/rest/api/2/issue/{issueKey}/comment" | jq .
 ```
 
 ### 添加评论
@@ -227,7 +229,7 @@ curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
 curl -s -X POST \
   -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://jira.kongfz.com/rest/api/2/issue/{issueKey}/comment" \
+  "$JIRA_BASE_URL/rest/api/2/issue/{issueKey}/comment" \
   -d '{"body": "评论内容"}' | jq '.id'
 ```
 
@@ -237,7 +239,7 @@ curl -s -X POST \
 curl -s -X PUT \
   -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://jira.kongfz.com/rest/api/2/issue/{issueKey}/comment/{commentId}" \
+  "$JIRA_BASE_URL/rest/api/2/issue/{issueKey}/comment/{commentId}" \
   -d '{"body": "更新后的评论"}' -i
 ```
 
@@ -246,7 +248,7 @@ curl -s -X PUT \
 ```bash
 curl -s -X DELETE \
   -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/issue/{issueKey}/comment/{commentId}" -i
+  "$JIRA_BASE_URL/rest/api/2/issue/{issueKey}/comment/{commentId}" -i
 ```
 
 ## 附件
@@ -258,14 +260,14 @@ curl -s -X POST \
   -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
   -H "X-Atlassian-Token: no-check" \
   -F "file=@/path/to/file" \
-  "https://jira.kongfz.com/rest/api/2/issue/{issueKey}/attachments" | jq .
+  "$JIRA_BASE_URL/rest/api/2/issue/{issueKey}/attachments" | jq .
 ```
 
 ### 查看附件列表
 
 ```bash
 curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/issue/{issueKey}?fields=attachment" | jq '.fields.attachment'
+  "$JIRA_BASE_URL/rest/api/2/issue/{issueKey}?fields=attachment" | jq '.fields.attachment'
 ```
 
 ### 下载附件
@@ -273,7 +275,7 @@ curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
 ```bash
 curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
   -o "/path/to/save" \
-  "https://jira.kongfz.com/secure/attachment/{attachmentId}/{filename}"
+  "$JIRA_BASE_URL/secure/attachment/{attachmentId}/{filename}"
 ```
 
 ## 工时记录
@@ -282,7 +284,7 @@ curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
 
 ```bash
 curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/issue/{issueKey}/worklog" | jq .
+  "$JIRA_BASE_URL/rest/api/2/issue/{issueKey}/worklog" | jq .
 ```
 
 ### 添加工时
@@ -291,7 +293,7 @@ curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
 curl -s -X POST \
   -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://jira.kongfz.com/rest/api/2/issue/{issueKey}/worklog" \
+  "$JIRA_BASE_URL/rest/api/2/issue/{issueKey}/worklog" \
   -d '{"timeSpent": "2h", "comment": "开发耗时"}' | jq .
 ```
 
@@ -301,7 +303,7 @@ curl -s -X POST \
 
 ```bash
 curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/issue/{issueKey}/changelog" | jq .
+  "$JIRA_BASE_URL/rest/api/2/issue/{issueKey}/changelog" | jq .
 ```
 
 ## 组件管理
@@ -312,7 +314,7 @@ curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
 curl -s -X POST \
   -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://jira.kongfz.com/rest/api/2/component" \
+  "$JIRA_BASE_URL/rest/api/2/component" \
   -d '{
     "name": "组件名",
     "description": "组件描述",
@@ -326,7 +328,7 @@ curl -s -X POST \
 curl -s -X PUT \
   -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://jira.kongfz.com/rest/api/2/component/{componentId}" \
+  "$JIRA_BASE_URL/rest/api/2/component/{componentId}" \
   -d '{"name": "新组件名", "description": "新描述"}' | jq .
 ```
 
@@ -336,7 +338,7 @@ curl -s -X PUT \
 # 可选 moveIssuesTo 将关联 Issue 转移到其他组件
 curl -s -X DELETE \
   -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/component/{componentId}?moveIssuesTo={targetComponentId}" -i
+  "$JIRA_BASE_URL/rest/api/2/component/{componentId}?moveIssuesTo={targetComponentId}" -i
 ```
 
 ## 用户查询
@@ -345,14 +347,14 @@ curl -s -X DELETE \
 
 ```bash
 curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/myself" | jq '.displayName'
+  "$JIRA_BASE_URL/rest/api/2/myself" | jq '.displayName'
 ```
 
 ### 搜索用户
 
 ```bash
 curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/user/search?username={关键词}" | jq '.[] | "\(.name)\t\(.displayName)"'
+  "$JIRA_BASE_URL/rest/api/2/user/search?username={关键词}" | jq '.[] | "\(.name)\t\(.displayName)"'
 ```
 
 ## 分页
@@ -364,7 +366,7 @@ curl -s -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
 curl -s -X POST \
   -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://jira.kongfz.com/rest/api/2/search" \
+  "$JIRA_BASE_URL/rest/api/2/search" \
   -d '{
     "jql": "project = SHOPA",
     "startAt": 50,
@@ -381,14 +383,14 @@ curl -s -X POST \
 # 保留响应头 + 状态码
 curl -s -D /tmp/resp.headers -o /tmp/resp.json \
   -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/issue/{issueKey}"
+  "$JIRA_BASE_URL/rest/api/2/issue/{issueKey}"
 cat /tmp/resp.headers
 jq . /tmp/resp.json
 
 # 快速判断 HTTP 状态码
 HTTP_CODE=$(curl -s -o /tmp/resp.json -w "%{http_code}" \
   -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
-  "https://jira.kongfz.com/rest/api/2/myself")
+  "$JIRA_BASE_URL/rest/api/2/myself")
 echo "HTTP_CODE=$HTTP_CODE"
 ```
 
