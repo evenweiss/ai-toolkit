@@ -7,6 +7,12 @@ import { SKILLS, TOOLS, detectInstalledTools } from "./constants.js";
 import { installSkillToTool, uninstallSkillFromTool } from "./installer.js";
 
 /**
+ * 终端主内容区左侧统一的两空格缩进（与顶栏、收尾、错误提示对齐）。
+ * 所有面向用户的 `console.log` / 区块标题应以此开头，避免有的顶格、有的多空格。
+ */
+export const TERM_GUTTER = "  ";
+
+/**
  * 传给所有 @inquirer prompt 的 context。
  * `clearPromptOnDone: true` 会在 prompt 结束时用 ANSI 擦除整块 TUI 占用的行，
  * 避免默认「只换行」导致旧菜单残留在终端上，与下一屏叠在一起（尤其快速按方向键时）。
@@ -26,11 +32,19 @@ function afterPromptFlush() {
   });
 }
 
+/**
+ * 打印步骤区块标题（青粗体 + 统一左侧 gutter + 段后空行）。
+ * @param {string} title 标题全文，例如「━━━ 选择 Skill ━━━」
+ */
+function printSectionTitle(title) {
+  console.log(chalk.cyan.bold(TERM_GUTTER + title + "\n"));
+}
+
 function printBanner() {
   console.clear();
   const banner = gradientString(["#4facfe", "#a855f7", "#f472b6"])("  LUMINAE HELPER  ");
-  console.log("\n  " + banner);
-  console.log(chalk.gray("  AI coding tools skill manager\n"));
+  console.log("\n" + TERM_GUTTER + banner);
+  console.log(chalk.gray(TERM_GUTTER + "AI coding tools' skills manager\n"));
 }
 
 /**
@@ -74,7 +88,7 @@ function withNavChoices(items, backLabel) {
     ...items,
     new Separator(),
     { name: chalk.yellow(backLabel), value: "__back__" },
-    { name: "✕  退出", value: "__exit__" },
+    { name: "✕ 退出", value: "__exit__" },
   ];
 }
 
@@ -97,7 +111,7 @@ async function stepSelectSkills() {
   while (true) {
     await afterPromptFlush();
     printBanner();
-    console.log(chalk.cyan.bold("━━━ 选择 Skill ━━━\n"));
+    printSectionTitle("━━━ 选择 Skill ━━━");
 
     const skillChoices = SKILLS.map(s => ({
       name: s.name + "  -  " + s.description,
@@ -105,13 +119,13 @@ async function stepSelectSkills() {
     }));
 
     const theme = {
-      prefix: chalk.cyan("◆"),
+      prefix: chalk.cyan(" ◆"),
       style: { highlight: (t) => chalk.cyan(t) },
     };
 
     const ans = await runCheckbox({
-      message: "  选择 Skill (空格多选，回车提交；底部「↩ 返回 / ✕ 退出」为功能行：移上去后按回车):",
-      choices: withNavChoices(skillChoices, "↩  返回主菜单"),
+      message: "选择 Skill:",
+      choices: withNavChoices(skillChoices, "↩ 返回主菜单"),
       loop: false,
       theme,
     });
@@ -122,7 +136,7 @@ async function stepSelectSkills() {
     if (result === "exit") return "exit";
 
     if (result.length === 0) {
-      console.log(chalk.yellow("\n  请至少选择一个 Skill"));
+      console.log(chalk.yellow(TERM_GUTTER + "请至少选择一个 Skill"));
       await new Promise(r => setTimeout(r, 1200));
       continue;
     }
@@ -136,7 +150,7 @@ async function stepSelectTools(installedTools) {
   while (true) {
     await afterPromptFlush();
     printBanner();
-    console.log(chalk.cyan.bold("━━━ 选择目标工具 ━━━\n"));
+    printSectionTitle("━━━ 选择目标工具 ━━━");
 
     const toolChoices = installedTools.map(t => ({
       name: t.name,
@@ -144,12 +158,13 @@ async function stepSelectTools(installedTools) {
     }));
 
     const theme = {
-      prefix: chalk.cyan("◆"),
+      prefix: chalk.cyan(" ◆"),
       style: { highlight: (t) => chalk.cyan(t) },
     };
 
+    // 第二步：底部为返回/退出功能行（移上后回车触发）
     const ans = await runCheckbox({
-      message: "  选择工具 (空格多选，回车提交；底部「↩ 返回 / ✕ 退出」为功能行：移上去后按回车):",
+      message: "选择工具:",
       choices: withNavChoices(toolChoices, "↩  返回上一步"),
       loop: false,
       theme,
@@ -161,7 +176,7 @@ async function stepSelectTools(installedTools) {
     if (result === "exit") return "exit";
 
     if (result.length === 0) {
-      console.log(chalk.yellow("\n  请至少选择一个工具"));
+      console.log(chalk.yellow(TERM_GUTTER + "请至少选择一个工具"));
       await new Promise(r => setTimeout(r, 1200));
       continue;
     }
@@ -180,29 +195,23 @@ function asIdArray(v) {
   return v.filter((x) => typeof x === "string");
 }
 
-// ── Step 3: Preview + Confirm (Select with navigation) ──
-async function stepPreviewConfirm(skillIds, toolIds, installedTools, isUninstall) {
-  const sids = asIdArray(skillIds);
-  const tids = asIdArray(toolIds);
+// ── Step 3: Preview + Confirm（仅标题 + 确认菜单；不再展示 Skill/工具明细）──
+async function stepPreviewConfirm(isUninstall) {
   await afterPromptFlush();
   printBanner();
   const actionLabel = isUninstall ? "卸载" : "安装";
-  console.log(chalk.cyan.bold("━━━ " + actionLabel + "预览 ━━━\n"));
-  const skillNames = sids.map(id => SKILLS.find(s => s.id === id)?.name).join(", ");
-  const toolNames = tids.map(id => installedTools.find(t => t.id === id)?.name).join(", ");
-  console.log("  " + chalk.bold("Skill:") + "  " + skillNames);
-  console.log("  " + chalk.bold("工具:") + "  " + toolNames);
-  console.log();
+  printSectionTitle("━━━ " + actionLabel + "预览 ━━━");
+  // 第三步：标题下方不再打印 Skill/工具明细列表，由确认菜单直接操作
 
   const ans = await Select(
     {
-      message: "  确认" + actionLabel + "？",
+      message: "确认" + actionLabel + "？",
       choices: [
-        { name: "✓  确认" + actionLabel, value: "confirm" },
-        { name: "↩  返回上一步", value: "back" },
-        { name: "✕  退出", value: "exit" },
+        { name: "✓ 确认" + actionLabel, value: "confirm" },
+        { name: "↩ 返回上一步", value: "back" },
+        { name: "✕ 退出", value: "exit" },
       ],
-      theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
+      theme: { prefix: chalk.cyan(" ◆"), style: { highlight: (t) => chalk.cyan(t) } },
     },
     inquirerContext
   ).catch(() => "back");
@@ -217,7 +226,7 @@ async function stepExecute(skillIds, toolIds, installedTools, isUninstall) {
   await afterPromptFlush();
   printBanner();
   console.log();
-  console.log(chalk.cyan.bold("━━━ 执行中 ━━━\n"));
+  printSectionTitle("━━━ 执行中 ━━━");
 
   let allSuccess = true;
 
@@ -231,23 +240,23 @@ async function stepExecute(skillIds, toolIds, installedTools, isUninstall) {
 
       const supported = skill.installTargets?.some(tgt => tgt.toolId === toolId);
       if (!supported) {
-        console.log(chalk.gray("  - " + skill.name + "  ×  " + tool.name + " (不支持)"));
+        console.log(chalk.gray(TERM_GUTTER + "- " + skill.name + "  ×  " + tool.name + " (不支持)"));
         continue;
       }
 
       if (isUninstall) {
         const result = uninstallSkillFromTool(skill, tool);
         if (result.success) {
-          console.log(chalk.green("  ✓ " + skill.name + "  ✓  " + tool.name));
+          console.log(chalk.green(TERM_GUTTER + "✓ " + skill.name + " - " + tool.name));
         } else {
-          console.log(chalk.yellow("  - " + skill.name + "  -  " + tool.name + " (未安装)"));
+          console.log(chalk.yellow(TERM_GUTTER + "- " + skill.name + " - " + tool.name + " (未安装)"));
         }
       } else {
         const result = installSkillToTool(skill, tool);
         if (result.success) {
-          console.log(chalk.green("  ✓ " + skill.name + "  →  " + tool.name));
+          console.log(chalk.green(TERM_GUTTER + "✓ " + skill.name + " → " + tool.name));
         } else {
-          console.log(chalk.red("  ✗ " + skill.name + "  →  " + tool.name + ": " + result.message));
+          console.log(chalk.red(TERM_GUTTER + "✗ " + skill.name + " → " + tool.name + ": " + result.message));
           allSuccess = false;
         }
       }
@@ -256,9 +265,9 @@ async function stepExecute(skillIds, toolIds, installedTools, isUninstall) {
 
   console.log();
   if (allSuccess) {
-    console.log(chalk.green("  ✅ 操作完成！\n"));
+    console.log(chalk.green(TERM_GUTTER + "✅ 操作完成！\n"));
   } else {
-    console.log(chalk.yellow("  ⚠ 部分操作失败，请检查错误信息。\n"));
+    console.log(chalk.yellow(TERM_GUTTER + "❌ 部分操作失败，请检查错误信息。\n"));
   }
 
   return allSuccess;
@@ -270,16 +279,17 @@ async function runFlow(isUninstall) {
   if (installedTools.length === 0) {
     await afterPromptFlush();
     printBanner();
-    console.log(chalk.yellow("\n  ⚠ 未检测到任何已安装的 AI 工具\n"));
-    console.log(chalk.gray("  请先安装以下工具之一:\n"));
+    console.log(chalk.yellow(TERM_GUTTER + "⚠ 未检测到任何已安装的 AI 工具\n"));
+    console.log(chalk.gray(TERM_GUTTER + "请先安装以下工具之一:\n"));
     TOOLS.forEach(t => {
-      console.log("  " + chalk.cyan(t.name) + ": " + chalk.gray(t.installHint));
+      // 列表相对上一行再缩进一格 gutter，形成层级感
+      console.log(TERM_GUTTER + TERM_GUTTER + chalk.cyan(t.name) + ": " + chalk.gray(t.installHint));
     });
     console.log();
     await input(
       {
-        message: "  按回车返回主菜单...",
-        theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
+        message: "按回车返回主菜单...",
+        theme: { prefix: chalk.cyan(" ◆"), style: { highlight: (t) => chalk.cyan(t) } },
       },
       inquirerContext
     ).catch(() => {});
@@ -304,7 +314,7 @@ async function runFlow(isUninstall) {
       selectedToolIds = result;
       step = 3;
     } else if (step === 3) {
-      const result = await stepPreviewConfirm(selectedSkillIds, selectedToolIds, installedTools, isUninstall);
+      const result = await stepPreviewConfirm(isUninstall);
       if (result === "back") { step = 2; continue; }
       if (result === "exit") return "exit";
       step = 4;
@@ -316,24 +326,24 @@ async function runFlow(isUninstall) {
         if (allSuccess) break;
         attempt++;
         if (attempt < 3) {
-          console.log(chalk.yellow(`  第 ${attempt} 次重试...\n`));
+          console.log(chalk.yellow(TERM_GUTTER + `第 ${attempt} 次重试...\n`));
         }
       }
       if (allSuccess) {
         await input(
           {
-            message: "  按任意键退出...",
-            theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
+            message: "按任意键退出...",
+            theme: { prefix: chalk.cyan(" ◆"), style: { highlight: (t) => chalk.cyan(t) } },
           },
           inquirerContext
         ).catch(() => {});
         return "exit";
       } else {
-        console.log(chalk.red("  ❌ 重试 3 次后仍有失败，请手动检查。\n"));
+        console.log(chalk.red(TERM_GUTTER + "❌ 重试 3 次后仍有失败，请手动检查。\n"));
         await input(
           {
-            message: "  按任意键返回主菜单...",
-            theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
+            message: "按任意键返回主菜单...",
+            theme: { prefix: chalk.cyan(" ◆"), style: { highlight: (t) => chalk.cyan(t) } },
           },
           inquirerContext
         ).catch(() => {});
@@ -352,13 +362,13 @@ export async function runInteractive() {
 
     const action = await Select(
       {
-        message: "  选择操作:",
+        message: "选择操作:",
         choices: [
-          { name: padChoice("📦  安装 Skill", 20), value: "install" },
-          { name: padChoice("🗑   卸载 Skill", 20), value: "uninstall" },
-          { name: padChoice("✕  退出", 20), value: "exit" },
+          { name: padChoice(" 安装 Skill", 20), value: "install" },
+          { name: padChoice(" 卸载 Skill", 20), value: "uninstall" },
+          { name: padChoice(" 退出", 20), value: "exit" },
         ],
-        theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
+        theme: { prefix: chalk.cyan(" ◆"), style: { highlight: (t) => chalk.cyan(t) } },
       },
       inquirerContext
     ).catch(() => "exit");
@@ -377,6 +387,6 @@ export async function runInteractive() {
     // "back" or "done" → loop continues, show main menu again
   }
 
-  console.log(chalk.gray("\n  👋 Bye!\n"));
+  console.log(chalk.gray("\n" + TERM_GUTTER + "👋 Bye!\n"));
   process.exit(0);
 }

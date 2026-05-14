@@ -263,7 +263,7 @@ export default createPrompt((config, done) => {
   ];
   if (shortcuts.all) keys.push([shortcuts.all, "all"]);
   if (shortcuts.invert) keys.push([shortcuts.invert, "invert"]);
-  keys.push(["⏎", "提交多选 / 执行功能行"]);
+  keys.push(["⏎", "提交 / 执行"]);
   const helpLine = theme.style.keysHelpTip(keys);
   const lines = [
     [prefix, message].filter(Boolean).join(" "),
