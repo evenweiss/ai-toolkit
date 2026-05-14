@@ -1,11 +1,11 @@
 {
-  "name": "kfz-skill-helper",
+  "name": "luminae-helper",
   "version": "0.0.1",
   "description": "Install AI skills to coding tools (Claude Code, Cursor, OpenCode, Trae, etc.)",
   "type": "module",
   "main": "src/cli.js",
   "bin": {
-    "kfz-skill-helper": "src/cli.js"
+    "luminae-helper": "src/cli.js"
   },
   "files": [
     "src/cli.js",
