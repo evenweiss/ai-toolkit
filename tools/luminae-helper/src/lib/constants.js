@@ -1,84 +1,16 @@
 import { homedir } from "os";
 import { join } from "path";
+import { existsSync, readdirSync, readFileSync, statSync } from "fs";
 import { commandExists } from "../utils/platform.js";
 
-export const SKILLS = [
-  {
-    id: "skill-identity",
-    name: "Identity",
-    description: "检测项目类型，设置 agent 身份",
-    installTargets: [
-      {
-        toolId: "claude-code",
-        destPath: () => join(homedir(), ".claude", "commands", "identity.md"),
-      },
-      {
-        toolId: "cursor",
-        destPath: () => join(homedir(), ".cursor", "commands", "identity.md"),
-      },
-      {
-        toolId: "trae",
-        destPath: () => join(homedir(), ".trae", "commands", "identity.md"),
-      },
-      {
-        toolId: "opencode",
-        destPath: () => join(homedir(), ".opencode", "skills", "skill-identity"),
-      },
-    ],
-  },
-  {
-    id: "skill-git-commit",
-    name: "Git Commit",
-    description: "智能生成符合规范的 commit message",
-    installTargets: [
-      {
-        toolId: "claude-code",
-        destPath: () => join(homedir(), ".claude", "commands", "git-commit.md"),
-      },
-      {
-        toolId: "cursor",
-        destPath: () => join(homedir(), ".cursor", "commands", "git-commit.md"),
-      },
-      {
-        toolId: "trae",
-        destPath: () => join(homedir(), ".trae", "commands", "git-commit.md"),
-      },
-      {
-        toolId: "opencode",
-        destPath: () => join(homedir(), ".opencode", "skills", "skill-git-commit"),
-      },
-    ],
-  },
-  {
-    id: "skill-git-push",
-    name: "Git Push",
-    description: "推送代码并处理分支追踪",
-    installTargets: [
-      {
-        toolId: "claude-code",
-        destPath: () => join(homedir(), ".claude", "commands", "git-push.md"),
-      },
-      {
-        toolId: "cursor",
-        destPath: () => join(homedir(), ".cursor", "commands", "git-push.md"),
-      },
-      {
-        toolId: "trae",
-        destPath: () => join(homedir(), ".trae", "commands", "git-push.md"),
-      },
-      {
-        toolId: "opencode",
-        destPath: () => join(homedir(), ".opencode", "skills", "skill-git-push"),
-      },
-    ],
-  },
-];
+// ── Tools ──
 
 export const TOOLS = [
   {
     id: "claude-code",
     name: "Claude Code",
     command: "claude",
+    installMode: "file",
     skillsDir: () => join(homedir(), ".claude", "commands"),
     installHint: "npm install -g @anthropic-ai/claude-code",
   },
@@ -86,6 +18,7 @@ export const TOOLS = [
     id: "cursor",
     name: "Cursor",
     command: "cursor",
+    installMode: "file",
     skillsDir: () => join(homedir(), ".cursor", "commands"),
     installHint: "Download from https://cursor.com",
   },
@@ -93,6 +26,7 @@ export const TOOLS = [
     id: "opencode",
     name: "OpenCode",
     command: "opencode",
+    installMode: "dir",
     skillsDir: () => join(homedir(), ".opencode", "skills"),
     installHint: "npm install -g opencode-ai",
   },
@@ -100,6 +34,7 @@ export const TOOLS = [
     id: "trae",
     name: "Trae",
     command: "trae",
+    installMode: "file",
     skillsDir: () => join(homedir(), ".trae", "commands"),
     installHint: "Download from https://trae.ai",
   },
@@ -107,6 +42,7 @@ export const TOOLS = [
     id: "openclaw",
     name: "OpenClaw",
     command: "openclaw",
+    installMode: "dir",
     skillsDir: () => join(homedir(), ".openclaw", "skills"),
     installHint: "npm install -g openclaw",
   },
@@ -114,6 +50,7 @@ export const TOOLS = [
     id: "nanobot",
     name: "Nanobot",
     command: "nanobot",
+    installMode: "dir",
     skillsDir: () => join(homedir(), ".nanobot", "skills"),
     installHint: "pip install nanobot",
   },
@@ -121,6 +58,7 @@ export const TOOLS = [
     id: "hermes-agent",
     name: "Hermes Agent",
     command: "hermes",
+    installMode: "dir",
     skillsDir: () => join(homedir(), ".hermes", "skills"),
     installHint: "pip install hermes-ai",
   },
@@ -128,14 +66,118 @@ export const TOOLS = [
     id: "zeroclaw",
     name: "ZeroClaw",
     command: "zeroclaw",
+    installMode: "dir",
     skillsDir: () => join(homedir(), ".zeroclaw", "skills"),
     installHint: "npm install -g zeroclaw",
   },
 ];
 
+// ── Skill auto-discovery ──
+
+/**
+ * Get the package root directory.
+ * import.meta.dirname = <luminae-helper>/src/lib
+ * Package root = <luminae-helper>/
+ */
+function getPackageDir() {
+  const selfDir = import.meta.dirname;
+  if (selfDir.endsWith("/src/lib") || selfDir.endsWith("\\src\\lib")) {
+    return join(selfDir, "..", "..");
+  }
+  if (selfDir.endsWith("/src") || selfDir.endsWith("\\src")) {
+    return join(selfDir, "..");
+  }
+  return selfDir;
+}
+
+/**
+ * Parse YAML frontmatter from SKILL.md content.
+ * Only extracts `name` and `description`.
+ */
+function parseSkillMeta(skillId, content) {
+  let name = null;
+  let description = null;
+
+  const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  if (fmMatch) {
+    for (const line of fmMatch[1].split("\n")) {
+      const m = line.match(/^(\w+):\s*(.+)/);
+      if (m) {
+        if (m[1] === "name") name = m[2].trim();
+        if (m[1] === "description") description = m[2].trim();
+      }
+    }
+  }
+
+  // Default name: skillId without "skill-" prefix, capitalize words
+  if (!name) {
+    name = skillId
+      .replace(/^skill-/, "")
+      .replace(/(^|-)(\w)/g, (_, p, c) => (p === "-" ? " " : "") + c.toUpperCase());
+  }
+
+  // Default description: first blockquote line
+  if (!description) {
+    const bq = content.match(/^>\s*(.+)/m);
+    if (bq) description = bq[1].trim();
+  }
+
+  return { name, description };
+}
+
+/**
+ * Generate destPath for a skill+tool combo based on installMode.
+ * - file mode: <skillsDir>/<shortName>.md
+ * - dir mode:  <skillsDir>/<skillId>/
+ */
+function generateDestPath(tool, skillId) {
+  const shortName = skillId.replace(/^skill-/, "");
+  if (tool.installMode === "dir") {
+    return () => join(tool.skillsDir(), skillId);
+  }
+  return () => join(tool.skillsDir(), `${shortName}.md`);
+}
+
+/**
+ * Scan skills/ directory and build SKILLS array automatically.
+ * Each subdirectory containing a SKILL.md is a valid skill.
+ */
+export function discoverSkills() {
+  const skillsRoot = join(getPackageDir(), "skills");
+  if (!existsSync(skillsRoot)) return [];
+
+  const skills = [];
+  for (const entry of readdirSync(skillsRoot)) {
+    const skillPath = join(skillsRoot, entry);
+    if (!statSync(skillPath).isDirectory()) continue;
+
+    const skillFile = join(skillPath, "SKILL.md");
+    if (!existsSync(skillFile)) continue;
+
+    const skillId = entry;
+    const content = readFileSync(skillFile, "utf-8");
+    const { name, description } = parseSkillMeta(skillId, content);
+
+    skills.push({
+      id: skillId,
+      name,
+      description,
+      installTargets: TOOLS.map((tool) => ({
+        toolId: tool.id,
+        destPath: generateDestPath(tool, skillId),
+      })),
+    });
+  }
+
+  return skills;
+}
+
+export const SKILLS = discoverSkills();
+
+// ── Helpers ──
+
 /**
  * Detect which tools are installed on this machine.
- * Returns array of tool objects with extra `installed: true` field.
  */
 export function detectInstalledTools() {
   return TOOLS.map((tool) => ({
@@ -145,19 +187,9 @@ export function detectInstalledTools() {
 }
 
 /**
- * Find skill source directory from the ai-toolkit project.
- * import.meta.dirname = <luminae-helper>/src/lib  (when imported by cli.js or -e)
- * Normalize path: luminae-helperDir/src/lib -> luminae-helperDir -> tools -> project root
+ * Find skill source directory bundled inside this package.
+ * Skills are at <luminae-helper>/skills/<skillId>/
  */
 export function getSkillSourcePath(skillId) {
-  const selfDir = import.meta.dirname;
-  let skillInstallerDir = selfDir;
-  if (selfDir.endsWith("/src/lib") || selfDir.endsWith("\\src\\lib")) {
-    skillInstallerDir = join(selfDir, "..", "..");
-  } else if (selfDir.endsWith("/src") || selfDir.endsWith("\\src")) {
-    skillInstallerDir = join(selfDir, "..");
-  }
-  // skillInstallerDir -> tools -> project root (go up 2 more levels from skillInstallerDir)
-  const projectRoot = join(skillInstallerDir, "..", "..");
-  return join(projectRoot, "skills", skillId);
+  return join(getPackageDir(), "skills", skillId);
 }

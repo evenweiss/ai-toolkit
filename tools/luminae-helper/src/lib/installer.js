@@ -62,7 +62,7 @@ export function installSkillToTool(skill, tool) {
     return { success: false, message: `SKILL.md not found in ${sourceDir}` };
   }
 
-  const isDirBased = tool.id === "opencode" || tool.id === "openclaw" || tool.id === "nanobot" || tool.id === "hermes-agent" || tool.id === "zeroclaw";
+  const isDirBased = tool.installMode === "dir";
 
   if (isDirBased) {
     const destSkillDir = destPath;
@@ -84,7 +84,7 @@ export function uninstallSkillFromTool(skill, tool) {
   }
 
   const destPath = target.destPath();
-  const isDirBased = tool.id === "opencode" || tool.id === "openclaw" || tool.id === "nanobot" || tool.id === "hermes-agent" || tool.id === "zeroclaw";
+  const isDirBased = tool.installMode === "dir";
 
   if (isDirBased) {
     if (existsSync(destPath)) {

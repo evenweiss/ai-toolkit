@@ -1,3 +1,8 @@
+---
+name: Identity
+description: 检测项目类型，设置 agent 身份
+---
+
 # skill-identity
 
 > Detect project type and set agent identity - foundation for all tasks
