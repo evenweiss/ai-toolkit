@@ -11,23 +11,25 @@ description: 读写公司 Confluence Wiki 页面
 
 ## 前置条件
 
-**必须配置个人访问令牌（Personal Access Token）：**
+**必须配置以下环境变量：**
 
 ```bash
 # 在 ~/.zshrc 或 ~/.bashrc 中添加：
+export CONFLUENCE_BASE_URL="https://wiki.kongfz.com"
 export CONFLUENCE_BEARER_TOKEN="你的令牌"
 ```
 
 令牌获取方式：登录 wiki.kongfz.com → 个人资料 → 个人访问令牌 → 创建令牌。
 
-**如果 `$CONFLUENCE_BEARER_TOKEN` 未配置或为空，必须停止执行并提示用户：**
+**如果环境变量未配置或为空，必须停止执行并提示用户：**
 
-> ⚠ 未检测到 CONFLUENCE_BEARER_TOKEN 环境变量。请在 ~/.zshrc 中配置 Confluence 个人访问令牌后重试。
-> 获取方式：登录 wiki.kongfz.com → 个人资料 → 个人访问令牌 → 创建令牌
+> ⚠ 未检测到 CONFLUENCE_BASE_URL 或 CONFLUENCE_BEARER_TOKEN 环境变量。请在 ~/.zshrc 中配置后重试。
+> - CONFLUENCE_BASE_URL — Confluence 服务地址（如 https://wiki.kongfz.com）
+> - CONFLUENCE_BEARER_TOKEN — 个人访问令牌（登录 wiki → 个人资料 → 个人访问令牌 → 创建）
 
 ## API 基础
 
-- 基地址：`https://wiki.kongfz.com/rest/api`
+- 基地址：`$CONFLUENCE_BASE_URL/rest/api`
 - 认证方式：`Authorization: Bearer $CONFLUENCE_BEARER_TOKEN`
 - 内容格式：`body.storage`（HTML 存储格式）
 - 通用请求头：`-H "Content-Type: application/json"`
@@ -38,32 +40,32 @@ export CONFLUENCE_BEARER_TOKEN="你的令牌"
 
 ```bash
 curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/space?limit=50" | jq '.results[] | "\(.key)\t\(.name)"'
+  "$CONFLUENCE_BASE_URL/rest/api/space?limit=50" | jq '.results[] | "\(.key)\t\(.name)"'
 ```
 
 ### 获取空间详情
 
 ```bash
 curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/space/{spaceKey}?expand=homepage,description.plain" | jq .
+  "$CONFLUENCE_BASE_URL/rest/api/space/{spaceKey}?expand=homepage,description.plain" | jq .
 ```
 
 ### 获取空间下的页面
 
 ```bash
 curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/content?spaceKey={spaceKey}&limit=50" | jq .
+  "$CONFLUENCE_BASE_URL/rest/api/content?spaceKey={spaceKey}&limit=50" | jq .
 ```
 
 ## 页面读取
 
 ### 获取页面内容
 
-从 URL 提取 pageId，如 `https://wiki.kongfz.com/pages/viewpage.action?pageId=10401070` 中 pageId 为 `10401070`。
+从 URL 提取 pageId，如 `$CONFLUENCE_BASE_URL/pages/viewpage.action?pageId=10401070` 中 pageId 为 `10401070`。
 
 ```bash
 curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/content/{pageId}?expand=body.storage,version,space" | jq .
+  "$CONFLUENCE_BASE_URL/rest/api/content/{pageId}?expand=body.storage,version,space" | jq .
 ```
 
 返回字段说明：
@@ -76,14 +78,14 @@ curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
 
 ```bash
 curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/content/{pageId}/history" | jq .
+  "$CONFLUENCE_BASE_URL/rest/api/content/{pageId}/history" | jq .
 ```
 
 ### 获取页面子页面
 
 ```bash
 curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/content/{pageId}/child/page?expand=space" | jq .
+  "$CONFLUENCE_BASE_URL/rest/api/content/{pageId}/child/page?expand=space" | jq .
 ```
 
 ## 页面搜索
@@ -93,7 +95,7 @@ curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
 ```bash
 # 按关键词搜索
 curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/content/search?cql=type%3Dpage+AND+text~%22{关键词}%22&limit=20" | jq .
+  "$CONFLUENCE_BASE_URL/rest/api/content/search?cql=type%3Dpage+AND+text~%22{关键词}%22&limit=20" | jq .
 ```
 
 ### 高级 CQL 查询
@@ -101,22 +103,22 @@ curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
 ```bash
 # 按空间+标题模糊搜索
 curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/content/search?cql=type%3Dpage+AND+space%3DKFZRepository+AND+title~%22进度%22&limit=20" | jq .
+  "$CONFLUENCE_BASE_URL/rest/api/content/search?cql=type%3Dpage+AND+space%3DKFZRepository+AND+title~%22进度%22&limit=20" | jq .
 
 # 按创建者搜索
 curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/content/search?cql=type%3Dpage+AND+creator%3DcurrentUser()" | jq .
+  "$CONFLUENCE_BASE_URL/rest/api/content/search?cql=type%3Dpage+AND+creator%3DcurrentUser()" | jq .
 
 # 最近7天更新的页面
 curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/content/search?cql=type%3Dpage+AND+lastModified%3E%3D-7d&limit=20" | jq .
+  "$CONFLUENCE_BASE_URL/rest/api/content/search?cql=type%3Dpage+AND+lastModified%3E%3D-7d&limit=20" | jq .
 ```
 
 ### 按标题查找页面
 
 ```bash
 curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/content?title={标题}&spaceKey={spaceKey}" | jq .
+  "$CONFLUENCE_BASE_URL/rest/api/content?title={标题}&spaceKey={spaceKey}" | jq .
 ```
 
 ## 页面创建
@@ -127,7 +129,7 @@ curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
 curl -s -X POST \
   -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://wiki.kongfz.com/rest/api/content" \
+  "$CONFLUENCE_BASE_URL/rest/api/content" \
   -d '{
     "type": "page",
     "title": "页面标题",
@@ -142,7 +144,7 @@ curl -s -X POST \
 curl -s -X POST \
   -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://wiki.kongfz.com/rest/api/content" \
+  "$CONFLUENCE_BASE_URL/rest/api/content" \
   -d '{
     "type": "page",
     "title": "子页面标题",
@@ -159,13 +161,13 @@ curl -s -X POST \
 ```bash
 # 1. 先获取当前版本号
 curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/content/{pageId}?expand=version" | jq '.version.number'
+  "$CONFLUENCE_BASE_URL/rest/api/content/{pageId}?expand=version" | jq '.version.number'
 
 # 2. 用版本号+1提交更新
 curl -s -X PUT \
   -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://wiki.kongfz.com/rest/api/content/{pageId}" \
+  "$CONFLUENCE_BASE_URL/rest/api/content/{pageId}" \
   -d '{
     "type": "page",
     "title": "页面标题",
@@ -180,12 +182,12 @@ curl -s -X PUT \
 # 移动到回收站
 curl -s -X DELETE \
   -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/content/{pageId}"
+  "$CONFLUENCE_BASE_URL/rest/api/content/{pageId}"
 
 # 永久删除（需要管理员权限）
 curl -s -X DELETE \
   -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/content/{pageId}?status=trashed"
+  "$CONFLUENCE_BASE_URL/rest/api/content/{pageId}?status=trashed"
 ```
 
 ## 标签管理
@@ -194,7 +196,7 @@ curl -s -X DELETE \
 
 ```bash
 curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/content/{pageId}/label" | jq .
+  "$CONFLUENCE_BASE_URL/rest/api/content/{pageId}/label" | jq .
 ```
 
 ### 添加标签
@@ -203,7 +205,7 @@ curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
 curl -s -X POST \
   -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://wiki.kongfz.com/rest/api/content/{pageId}/label" \
+  "$CONFLUENCE_BASE_URL/rest/api/content/{pageId}/label" \
   -d '[{ "prefix": "global", "name": "标签名" }]'
 ```
 
@@ -212,7 +214,7 @@ curl -s -X POST \
 ```bash
 curl -s -X DELETE \
   -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/content/{pageId}/label/{标签名}"
+  "$CONFLUENCE_BASE_URL/rest/api/content/{pageId}/label/{标签名}"
 ```
 
 ## 附件管理
@@ -221,7 +223,7 @@ curl -s -X DELETE \
 
 ```bash
 curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/content/{pageId}/child/attachment" | jq .
+  "$CONFLUENCE_BASE_URL/rest/api/content/{pageId}/child/attachment" | jq .
 ```
 
 ### 上传附件
@@ -231,14 +233,14 @@ curl -s -X POST \
   -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
   -H "X-Atlassian-Token: no-check" \
   -F "file=@/path/to/file" \
-  "https://wiki.kongfz.com/rest/api/content/{pageId}/child/attachment"
+  "$CONFLUENCE_BASE_URL/rest/api/content/{pageId}/child/attachment"
 ```
 
 ### 下载附件
 
 ```bash
 curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  -O "https://wiki.kongfz.com/rest/api/content/{pageId}/child/attachment/{attachmentId}/download"
+  -O "$CONFLUENCE_BASE_URL/rest/api/content/{pageId}/child/attachment/{attachmentId}/download"
 ```
 
 ## 评论管理
@@ -247,7 +249,7 @@ curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
 
 ```bash
 curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/content/{pageId}/child/comment?expand=body.storage" | jq .
+  "$CONFLUENCE_BASE_URL/rest/api/content/{pageId}/child/comment?expand=body.storage" | jq .
 ```
 
 ### 添加评论
@@ -256,7 +258,7 @@ curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
 curl -s -X POST \
   -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://wiki.kongfz.com/rest/api/content" \
+  "$CONFLUENCE_BASE_URL/rest/api/content" \
   -d '{
     "type": "comment",
     "container": { "id": "{pageId}", "type": "page" },
@@ -271,7 +273,7 @@ curl -s -X POST \
 ```bash
 # 获取第2页，每页25条
 curl -s -H "Authorization: Bearer $CONFLUENCE_BEARER_TOKEN" \
-  "https://wiki.kongfz.com/rest/api/content?spaceKey=KFZRepository&limit=25&start=25" | jq .
+  "$CONFLUENCE_BASE_URL/rest/api/content?spaceKey=KFZRepository&limit=25&start=25" | jq .
 ```
 
 响应中的 `_links.next` 指示是否有下一页。
