@@ -325,12 +325,30 @@ async function runFlow(isUninstall) {
       if (result === "exit") return "exit";
       step = 4;
     } else if (step === 4) {
-      await stepExecute(selectedSkillIds, selectedToolIds, installedTools, isUninstall);
-      await input({
-        message: "  按回车返回主菜单...",
-        theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
-      }).catch(() => {});
-      return "back";
+      let attempt = 0;
+      let allSuccess = false;
+      while (attempt < 3) {
+        allSuccess = await stepExecute(selectedSkillIds, selectedToolIds, installedTools, isUninstall);
+        if (allSuccess) break;
+        attempt++;
+        if (attempt < 3) {
+          console.log(chalk.yellow(`  第 ${attempt} 次重试...\n`));
+        }
+      }
+      if (allSuccess) {
+        await input({
+          message: "  按任意键退出...",
+          theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
+        }).catch(() => {});
+        return "exit";
+      } else {
+        console.log(chalk.red("  ❌ 重试 3 次后仍有失败，请手动检查。\n"));
+        await input({
+          message: "  按任意键返回主菜单...",
+          theme: { prefix: chalk.cyan("◆"), style: { highlight: (t) => chalk.cyan(t) } },
+        }).catch(() => {});
+        return "back";
+      }
     }
   }
 }
