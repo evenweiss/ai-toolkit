@@ -89,6 +89,10 @@ async function checkboxWithEsc(promptFn, timeoutMs = 5000) {
   ]);
 
   if (escReceived) return "back";
+  // 与 Esc 监听竞态的另一支路：stdin 非 TTY 时 isRaw 为 false，约 timeoutMs 后会 resolve("esc_timeout")；
+  // 若用户已提交多选，通常另一支路会先返回数组；但若仅超时或异常竞态，不能把字符串交给后续 parseCheckboxResult，
+  // 否则 stepSelectTools 会得到非数组，进而在 toolIds.map 处抛错。
+  if (result === "esc_timeout") return "back";
   return result;
 }
 
@@ -99,12 +103,14 @@ async function checkboxWithEsc(promptFn, timeoutMs = 5000) {
 function parseCheckboxResult(ans) {
   if (ans === "exit" || ans === "__exit__") return "exit";
   if (ans === "back" || ans === "__back__") return "back";
+  // 兜底：竞态或 inquirer 异常返回值不应穿透为「伪选中」
+  if (ans === "esc_timeout") return "back";
   if (Array.isArray(ans)) {
     if (ans.includes("__exit__")) return "exit";
     if (ans.includes("__back__")) return "back";
     return ans;
   }
-  return ans;
+  return "back";
 }
 
 /**
@@ -209,13 +215,25 @@ async function stepSelectTools(installedTools) {
   }
 }
 
+/**
+ * 将步骤间传递的 id 列表规范为 string[]，避免竞态/异常路径传入非数组导致 .map 报错。
+ * @param {unknown} v
+ * @returns {string[]}
+ */
+function asIdArray(v) {
+  if (!Array.isArray(v)) return [];
+  return v.filter((x) => typeof x === "string");
+}
+
 // ── Step 3: Preview + Confirm (Select with navigation) ──
 async function stepPreviewConfirm(skillIds, toolIds, installedTools, isUninstall) {
+  const sids = asIdArray(skillIds);
+  const tids = asIdArray(toolIds);
   printBanner();
   const actionLabel = isUninstall ? "卸载" : "安装";
   console.log(chalk.cyan.bold("━━━ " + actionLabel + "预览 ━━━\n"));
-  const skillNames = skillIds.map(id => SKILLS.find(s => s.id === id)?.name).join(", ");
-  const toolNames = toolIds.map(id => installedTools.find(t => t.id === id)?.name).join(", ");
+  const skillNames = sids.map(id => SKILLS.find(s => s.id === id)?.name).join(", ");
+  const toolNames = tids.map(id => installedTools.find(t => t.id === id)?.name).join(", ");
   console.log("  " + chalk.bold("Skill:") + "  " + skillNames);
   console.log("  " + chalk.bold("工具:") + "  " + toolNames);
   console.log();
@@ -235,17 +253,19 @@ async function stepPreviewConfirm(skillIds, toolIds, installedTools, isUninstall
 
 // ── Step 4: Execute ──
 async function stepExecute(skillIds, toolIds, installedTools, isUninstall) {
+  const sids = asIdArray(skillIds);
+  const tids = asIdArray(toolIds);
   printBanner();
   console.log();
   console.log(chalk.cyan.bold("━━━ 执行中 ━━━\n"));
 
   let allSuccess = true;
 
-  for (const toolId of toolIds) {
+  for (const toolId of tids) {
     const tool = TOOLS.find(t => t.id === toolId);
     if (!tool) continue;
 
-    for (const skillId of skillIds) {
+    for (const skillId of sids) {
       const skill = SKILLS.find(s => s.id === skillId);
       if (!skill) continue;
 
