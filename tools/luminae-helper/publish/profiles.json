@@ -8,7 +8,8 @@
       "skills": ["skill-identity", "skill-git-commit", "skill-git-push"]
     },
     "kfz": {
-      "comment": "发布到孔夫子私服：打包 monorepo 同步后的全部 skill",
+      "comment": "发布到孔夫子私服：打包 monorepo 同步后的全部 skill；npm 包名与 npmjs 区分",
+      "packageName": "kfz-skills-helper",
       "publishConfig": {
         "registry": "http://maven.kongfz.com/repository/npm_local/"
       },

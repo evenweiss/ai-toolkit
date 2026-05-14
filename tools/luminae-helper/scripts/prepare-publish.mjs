@@ -14,9 +14,12 @@
  *   node scripts/prepare-publish.mjs kfz
  *
  * ## 与 npm publish 的配合
- * 生成完成后在仓库根执行：
- *   npm publish -C tools/luminae-helper/.publish/npmjs
- * 或使用 package.json 里封装的 `npm run publish:npmjs` / `publish:kfz` / `publish:all`（双源）。
+ * 生成完成后在包根 `tools/luminae-helper` 下执行，**必须把暂存目录作为路径参数**：
+ *   npm publish ./.publish/npmjs
+ *   npm publish ./.publish/kfz
+ * 勿使用 `npm publish -C .publish/kfz`：在常见 npm 10+ 下 `-C` 仍可能按**父目录**的 package.json 发布，
+ * 结果会落到 ~/.npmrc 的默认 registry（如 npm_internal），包名仍是 luminae-helper，与 profile 不一致。
+ * 也可使用 package.json 里封装的 `npm run publish:npmjs` / `publish:kfz` / `publish:all`（双源）。
  */
 
 import { execFileSync } from "node:child_process";
@@ -43,7 +46,7 @@ const publishRoot = join(packageRoot, ".publish");
 
 /**
  * 读取并解析 profiles.json。
- * @returns {{ profiles: Record<string, { publishConfig?: object, skills: string[] | "all" }> }}
+ * @returns {{ profiles: Record<string, { packageName?: string, publishConfig?: object, skills: string[] | "all" }> }}
  */
 function loadProfiles() {
   if (!existsSync(profilesPath)) {
@@ -140,11 +143,16 @@ function copySkillSubsets(skillIds, destSkillsRoot) {
 /**
  * 基于根 package.json 生成「仅用于发布目录」的 manifest。
  * @param {object} basePkg
- * @param {{ publishConfig?: object }} profile
+ * @param {{ packageName?: string, publishConfig?: object }} profile
  */
 function buildPublishPackageJson(basePkg, profile) {
-  /** 浅拷贝即可：我们会替换 scripts / files / publishConfig */
+  /** 浅拷贝即可：我们会替换 scripts / files / publishConfig（及可选的 name） */
   const out = { ...basePkg };
+
+  // 私服等场景可与 npmjs 使用不同包名，避免 registry 上名称冲突；未配置则沿用源码包名
+  if (typeof profile.packageName === "string" && profile.packageName.trim()) {
+    out.name = profile.packageName.trim();
+  }
 
   // 发布目录内不再执行 monorepo 同步（路径会错），只保留对终端用户无副作用的脚本
   out.scripts = {
@@ -216,6 +224,7 @@ function main() {
   console.log(
     `[prepare-publish] 已生成: ${staging}\n` +
       `  profile: ${profileName}\n` +
+      `  package name: ${outPkg.name}\n` +
       `  skills (${skillIds.length}): ${skillIds.join(", ")}\n` +
       `  publishConfig.registry: ${outPkg.publishConfig?.registry ?? "(未设置)"}`
   );

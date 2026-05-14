@@ -22,8 +22,8 @@
     "prepare": "node scripts/sync-skills.js",
     "prepublishOnly": "node scripts/sync-skills.js --strict",
     "prepare-publish": "node scripts/prepare-publish.mjs",
-    "publish:npmjs": "node scripts/prepare-publish.mjs npmjs && npm publish -C .publish/npmjs",
-    "publish:kfz": "node scripts/prepare-publish.mjs kfz && npm publish -C .publish/kfz",
+    "publish:npmjs": "node scripts/prepare-publish.mjs npmjs && npm publish ./.publish/npmjs",
+    "publish:kfz": "node scripts/prepare-publish.mjs kfz && npm publish ./.publish/kfz",
     "publish:all": "npm run publish:npmjs && npm run publish:kfz"
   },
   "keywords": [
