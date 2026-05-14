@@ -16,7 +16,7 @@
  * ## 与 npm publish 的配合
  * 生成完成后在仓库根执行：
  *   npm publish -C tools/luminae-helper/.publish/npmjs
- * 或使用 package.json 里封装的 `npm run publish:npmjs` / `publish:kfz`。
+ * 或使用 package.json 里封装的 `npm run publish:npmjs` / `publish:kfz` / `publish:all`（双源）。
  */
 
 import { execFileSync } from "node:child_process";
