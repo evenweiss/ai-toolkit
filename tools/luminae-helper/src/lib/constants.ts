@@ -94,8 +94,8 @@ export const TOOLS: Tool[] = [
     id: "codex",
     name: "Codex",
     command: "codex",
-    installMode: "file",
-    skillsDir: () => join(homedir(), ".codex", "commands"),
+    installMode: "dir",
+    skillsDir: () => join(homedir(), ".codex", "skills"),
     installHint: "npm install -g @openai/codex",
   },
 ];
