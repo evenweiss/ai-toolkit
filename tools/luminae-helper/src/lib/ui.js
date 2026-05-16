@@ -165,7 +165,7 @@ async function stepSelectTools(installedTools) {
     // 第二步：底部为返回/退出功能行（移上后回车触发）
     const ans = await runCheckbox({
       message: "选择工具:",
-      choices: withNavChoices(toolChoices, "↩  返回上一步"),
+      choices: withNavChoices(toolChoices, "↩ 返回上一步"),
       loop: false,
       theme,
     });

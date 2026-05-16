@@ -70,6 +70,14 @@ export const TOOLS = [
     skillsDir: () => join(homedir(), ".zeroclaw", "skills"),
     installHint: "npm install -g zeroclaw",
   },
+  {
+    id: "codex",
+    name: "Codex",
+    command: "codex",
+    installMode: "file",
+    skillsDir: () => join(homedir(), ".codex", "commands"),
+    installHint: "npm install -g @openai/codex",
+  },
 ];
 
 // ── Skill auto-discovery ──
