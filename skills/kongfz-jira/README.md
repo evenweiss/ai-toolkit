@@ -1,4 +1,4 @@
-# skill-kongfz-jira
+# kongfz-jira
 
 Query and manage 孔网 Jira projects, issues, epics, and workflows via REST API.
 
@@ -29,16 +29,16 @@ Query and manage 孔网 Jira projects, issues, epics, and workflows via REST API
 
 ```bash
 # Claude Code
-cp skills/skill-kongfz-jira/SKILL.md ~/.claude/commands/kongfz-jira.md
+cp skills/kongfz-jira/SKILL.md ~/.claude/commands/kongfz-jira.md
 
 # Cursor
-cp skills/skill-kongfz-jira/SKILL.md ~/.cursor/commands/kongfz-jira.md
+cp skills/kongfz-jira/SKILL.md ~/.cursor/commands/kongfz-jira.md
 
 # OpenCode
-cp -r skills/skill-kongfz-jira ~/.opencode/skills/
+cp -r skills/kongfz-jira ~/.opencode/skills/
 
 # Trae
-cp skills/skill-kongfz-jira/SKILL.md ~/.trae/commands/kongfz-jira.md
+cp skills/kongfz-jira/SKILL.md ~/.trae/commands/kongfz-jira.md
 ```
 
 ## License

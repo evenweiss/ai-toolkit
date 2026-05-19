@@ -3,7 +3,7 @@ name: 孔网 Jira
 description: 查询与操作孔网 Jira 项目与 Issue（jira.kongfz.com）
 ---
 
-# skill-kongfz-jira
+# kongfz-jira
 
 > Query and manage Jira projects, issues, epics, and workflows via REST API
 

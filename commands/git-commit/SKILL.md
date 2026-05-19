@@ -1,19 +1,18 @@
-# skill-git-commit-msg
+# git-commit
 
-> Generate commit message from git diff, and optionally execute git commit
+> Generate commit message from git diff and execute git commit
 
-**触发条件：** 当需要"生成提交信息"、"写 commit message"、"帮我写 commit"、"生成几个 commit 建议"时调用。
+**触发条件：** 当需要"提交代码"、"帮我 commit"、"提交一下"、"commit 一下"时调用。
 
 ## 使用方式
 
 1. 执行 `git diff` 获取变更内容
 2. 分析变更文件路径和内容，判断变更类型
 3. 根据 Conventional Commits 规范生成 commit message
-4. 输出生成的 commit message 供用户审阅
-5. 询问用户是否以当前生成的 message 进行 commit
-6. 如果用户回复"是"、"同意"、"确认"等肯定词，则执行 `git commit`；否则不执行
+4. 输出生成的 commit message 供用户知悉
+5. 直接执行 `git commit`（无需用户确认）
 
-**注意：** 如需生成后直接提交（无需询问），请使用 `skill-git-commit`。
+**如只需生成 commit message 而不执行提交，请使用 `git-commit-msg`。**
 
 ## Conventional Commits 类型
 
@@ -61,20 +60,16 @@
 +120 行 / -30 行
 ```
 
-## 可选提交
+## 执行提交
 
-生成 commit message 后，询问用户：`是否以该 message 进行 commit？`
-
-- 用户回复"是"、"同意"、"确认"、"好"等肯定词 → 执行提交
-- 用户回复否定或要求修改 → 不执行，等待用户进一步指示
-
-执行命令：
+生成 commit message 后，直接执行以下命令（无需用户确认）：
 
 ```bash
 git commit -m "<type>(<scope>): <subject>" -m "<body>"
 ```
 
 - 如果 body 为空，省略第二个 `-m` 参数
+- 执行前先告知用户生成的 commit message 内容
 - 执行后输出 commit 结果（含 commit hash）
 - 如果 commit 失败，输出错误信息供用户排查
 

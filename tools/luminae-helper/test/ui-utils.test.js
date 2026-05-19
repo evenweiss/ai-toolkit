@@ -1,22 +1,5 @@
 import { describe, it, expect } from "vitest";
-
-function padChoice(text, targetWidth = 20) {
-  const stripped = text.replace(/\x1b\[[0-9;]*m/g, "");
-  const w = stripped.length;
-  const pad = Math.max(0, targetWidth - w);
-  return text + " ".repeat(pad);
-}
-
-function parseCheckboxResult(ans) {
-  if (ans === "exit" || ans === "__exit__") return "exit";
-  if (ans === "back" || ans === "__back__") return "back";
-  if (Array.isArray(ans)) {
-    if (ans.includes("__exit__")) return "exit";
-    if (ans.includes("__back__")) return "back";
-    return ans;
-  }
-  return ans;
-}
+import { padChoice, parseCheckboxResult } from "../src/lib/ui.js";
 
 describe("padChoice", () => {
   it("pads short text to target width", () => {
@@ -38,6 +21,12 @@ describe("padChoice", () => {
     const result = padChoice("", 5);
     expect(result).toBe("     ");
   });
+
+  it("accounts for CJK double-width characters via wcswidth", () => {
+    // 一个中文字 wcswidth=2，"你好"=4，targetWidth=10 应补 6 个空格
+    const result = padChoice("你好", 10);
+    expect(result).toBe("你好      ");
+  });
 });
 
 describe("parseCheckboxResult", () => {
@@ -58,19 +47,30 @@ describe("parseCheckboxResult", () => {
   });
 
   it('returns "exit" when array contains "__exit__"', () => {
-    expect(parseCheckboxResult(["skill-identity", "__exit__"])).toBe("exit");
+    expect(parseCheckboxResult(["identity", "__exit__"])).toBe("exit");
   });
 
   it('returns "back" when array contains "__back__"', () => {
-    expect(parseCheckboxResult(["skill-identity", "__back__"])).toBe("back");
+    expect(parseCheckboxResult(["identity", "__back__"])).toBe("back");
   });
 
   it("returns the array when it contains only skill ids", () => {
-    const arr = ["skill-identity", "skill-git-commit"];
+    const arr = ["identity", "git-commit"];
     expect(parseCheckboxResult(arr)).toEqual(arr);
   });
 
-  it("returns non-special values as-is", () => {
-    expect(parseCheckboxResult("other")).toBe("other");
+  it("filters out __back__ and __exit__ from array", () => {
+    // 包含 __back__ 时直接返回 "back"，不会走到 filter
+    expect(parseCheckboxResult(["identity", "__back__", "git-commit"])).toBe("back");
+    // 包含 __exit__ 时直接返回 "exit"
+    expect(parseCheckboxResult(["identity", "__exit__"])).toBe("exit");
+  });
+
+  it('returns "back" for esc_timeout', () => {
+    expect(parseCheckboxResult("esc_timeout")).toBe("back");
+  });
+
+  it("returns back for non-special values as fallback", () => {
+    expect(parseCheckboxResult("other")).toBe("back");
   });
 });

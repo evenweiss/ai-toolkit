@@ -1,4 +1,4 @@
-# skill-kongfz-wiki
+# kongfz-wiki
 
 Read and write 孔网 Wiki pages (wiki.kongfz.com) via REST API.
 
@@ -23,16 +23,16 @@ Read and write 孔网 Wiki pages (wiki.kongfz.com) via REST API.
 
 ```bash
 # Claude Code
-cp skills/skill-kongfz-wiki/SKILL.md ~/.claude/commands/kongfz-wiki.md
+cp skills/kongfz-wiki/SKILL.md ~/.claude/commands/kongfz-wiki.md
 
 # Cursor
-cp skills/skill-kongfz-wiki/SKILL.md ~/.cursor/commands/kongfz-wiki.md
+cp skills/kongfz-wiki/SKILL.md ~/.cursor/commands/kongfz-wiki.md
 
 # OpenCode
-cp -r skills/skill-kongfz-wiki ~/.opencode/skills/
+cp -r skills/kongfz-wiki ~/.opencode/skills/
 
 # Trae
-cp skills/skill-kongfz-wiki/SKILL.md ~/.trae/commands/kongfz-wiki.md
+cp skills/kongfz-wiki/SKILL.md ~/.trae/commands/kongfz-wiki.md
 ```
 
 ## License

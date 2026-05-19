@@ -2,13 +2,18 @@ import { spawnSync } from "child_process";
 import { platform } from "os";
 
 export function commandExists(commandName) {
-  const lookup = getCommandLookup(platform(), commandName);
-  const result = spawnSync(lookup.command, lookup.args, {
-    encoding: "utf-8",
-    shell: false,
-    stdio: ["ignore", "pipe", "ignore"],
-  });
-  return result.status === 0;
+  try {
+    const lookup = getCommandLookup(platform(), commandName);
+    const result = spawnSync(lookup.command, lookup.args, {
+      encoding: "utf-8",
+      shell: false,
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    if (result.error) return false;
+    return result.status === 0;
+  } catch {
+    return false;
+  }
 }
 
 export function runCommand(command, args = [], options = {}) {

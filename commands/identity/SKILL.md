@@ -1,4 +1,4 @@
-# skill-identity
+# identity
 
 > Detect project type and set agent identity - foundation for all tasks
 

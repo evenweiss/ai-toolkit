@@ -1,4 +1,4 @@
-# skill-git-push
+# git-push
 
 > Code review + commit + push workflow
 

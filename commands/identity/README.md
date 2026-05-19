@@ -1,4 +1,4 @@
-# skill-identity
+# identity
 
 Detect project type and set agent identity - foundation for all tasks.
 
@@ -40,16 +40,16 @@ Detect project type and set agent identity - foundation for all tasks.
 
 ```bash
 # Claude Code
-cp skills/skill-identity/SKILL.md ~/.claude/commands/identity.md
+cp commands/identity/SKILL.md ~/.claude/commands/identity.md
 
 # Cursor
-cp skills/skill-identity/SKILL.md ~/.cursor/commands/identity.md
+cp commands/identity/SKILL.md ~/.cursor/commands/identity.md
 
 # OpenCode
-cp -r skills/skill-identity ~/.opencode/skills/
+cp -r commands/identity ~/.opencode/skills/
 
 # Trae
-cp skills/skill-identity/SKILL.md ~/.trae/commands/identity.md
+cp commands/identity/SKILL.md ~/.trae/commands/identity.md
 ```
 
 ## License

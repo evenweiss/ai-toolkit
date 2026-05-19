@@ -50,7 +50,7 @@ function printBanner() {
 /**
  * Pad a choice label to a consistent display width so icons don't misalign.
  */
-function padChoice(text, targetWidth = 20) {
+export function padChoice(text, targetWidth = 20) {
   const stripped = text.replace(/\x1b\[[0-9;]*m/g, "");
   const w = wcswidth(stripped);
   const pad = w < 0 ? 0 : Math.max(0, targetWidth - w);
@@ -64,7 +64,7 @@ function padChoice(text, targetWidth = 20) {
  * @param {unknown} ans
  * @returns {"back"|"exit"|string[]}
  */
-function parseCheckboxResult(ans) {
+export function parseCheckboxResult(ans) {
   if (ans === "exit" || ans === "__exit__") return "exit";
   if (ans === "back" || ans === "__back__") return "back";
   if (ans === "esc_timeout") return "back";
@@ -106,12 +106,12 @@ async function runCheckbox(config) {
   });
 }
 
-// ── Step 1: Select skills (checkbox multi-select) ──
+// ── Step 1: Select entries (checkbox multi-select) ──
 async function stepSelectSkills() {
   while (true) {
     await afterPromptFlush();
     printBanner();
-    printSectionTitle("━━━ 选择 Skill ━━━");
+    printSectionTitle("━━━ 选择命令/技能 ━━━");
 
     const skillChoices = SKILLS.map(s => ({
       name: s.name + "  -  " + s.description,
@@ -124,7 +124,7 @@ async function stepSelectSkills() {
     };
 
     const ans = await runCheckbox({
-      message: "选择 Skill:",
+      message: "选择命令/技能:",
       choices: withNavChoices(skillChoices, "↩ 返回主菜单"),
       loop: false,
       theme,
@@ -136,7 +136,7 @@ async function stepSelectSkills() {
     if (result === "exit") return "exit";
 
     if (result.length === 0) {
-      console.log(chalk.yellow(TERM_GUTTER + "请至少选择一个 Skill"));
+      console.log(chalk.yellow(TERM_GUTTER + "请至少选择一个命令/技能"));
       await new Promise(r => setTimeout(r, 1200));
       continue;
     }
@@ -220,7 +220,16 @@ async function stepPreviewConfirm(isUninstall) {
 }
 
 // ── Step 4: Execute ──
-async function stepExecute(skillIds, toolIds, installedTools, isUninstall) {
+/**
+ * @param {string[]} skillIds
+ * @param {string[]} toolIds
+ * @param {object[]} installedTools
+ * @param {boolean} isUninstall
+ * @param {Set<string>|null} failedKeys - 若提供，只执行 key 在此集合中的组合；否则执行全部
+ *   key 格式: `${toolId}::${skillId}`
+ * @returns {{ allSuccess: boolean, failedKeys: Set<string> }}
+ */
+async function stepExecute(skillIds, toolIds, installedTools, isUninstall, failedKeys = null) {
   const sids = asIdArray(skillIds);
   const tids = asIdArray(toolIds);
   await afterPromptFlush();
@@ -229,18 +238,34 @@ async function stepExecute(skillIds, toolIds, installedTools, isUninstall) {
   printSectionTitle("━━━ 执行中 ━━━");
 
   let allSuccess = true;
+  /** 可重试的失败（I/O 错误等） */
+  const retryableFailedKeys = new Set();
+  /** 不可重试的失败（不支持、未注册等） */
+  const permanentFailedKeys = new Set();
 
   for (const toolId of tids) {
     const tool = TOOLS.find(t => t.id === toolId);
-    if (!tool) continue;
+    if (!tool) {
+      console.log(chalk.gray(TERM_GUTTER + "- 工具 " + toolId + " 未识别，跳过"));
+      continue;
+    }
 
     for (const skillId of sids) {
       const skill = SKILLS.find(s => s.id === skillId);
-      if (!skill) continue;
+      if (!skill) {
+        console.log(chalk.gray(TERM_GUTTER + "- Skill " + skillId + " 未识别，跳过"));
+        continue;
+      }
+
+      const key = `${toolId}::${skillId}`;
+      // 如果是重试模式，只执行之前失败的组合
+      if (failedKeys && !failedKeys.has(key)) continue;
 
       const supported = skill.installTargets?.some(tgt => tgt.toolId === toolId);
       if (!supported) {
-        console.log(chalk.gray(TERM_GUTTER + "- " + skill.name + "  ×  " + tool.name + " (不支持)"));
+        console.log(chalk.yellow(TERM_GUTTER + "- " + skill.name + "  ×  " + tool.name + " (不支持，跳过)"));
+        allSuccess = false;
+        permanentFailedKeys.add(key);
         continue;
       }
 
@@ -249,7 +274,10 @@ async function stepExecute(skillIds, toolIds, installedTools, isUninstall) {
         if (result.success) {
           console.log(chalk.green(TERM_GUTTER + "✓ " + skill.name + " - " + tool.name));
         } else {
-          console.log(chalk.yellow(TERM_GUTTER + "- " + skill.name + " - " + tool.name + " (未安装)"));
+          console.log(chalk.yellow(TERM_GUTTER + "- " + skill.name + " - " + tool.name + " (" + result.message + ")"));
+          allSuccess = false;
+          // "未安装" 不可重试，"非本工具安装" 也不可重试
+          permanentFailedKeys.add(key);
         }
       } else {
         const result = installSkillToTool(skill, tool);
@@ -258,6 +286,8 @@ async function stepExecute(skillIds, toolIds, installedTools, isUninstall) {
         } else {
           console.log(chalk.red(TERM_GUTTER + "✗ " + skill.name + " → " + tool.name + ": " + result.message));
           allSuccess = false;
+          // 安装失败可能是临时 I/O 问题，可重试
+          retryableFailedKeys.add(key);
         }
       }
     }
@@ -267,10 +297,13 @@ async function stepExecute(skillIds, toolIds, installedTools, isUninstall) {
   if (allSuccess) {
     console.log(chalk.green(TERM_GUTTER + "✅ 操作完成！\n"));
   } else {
-    console.log(chalk.yellow(TERM_GUTTER + "⚠ 部分操作失败，请检查错误信息。\n"));
+    const parts = [];
+    if (retryableFailedKeys.size > 0) parts.push(`${retryableFailedKeys.size} 项可重试`);
+    if (permanentFailedKeys.size > 0) parts.push(`${permanentFailedKeys.size} 项不可重试`);
+    console.log(chalk.yellow(TERM_GUTTER + `⚠ 部分操作失败（${parts.join("，")}），请检查错误信息。\n`));
   }
 
-  return allSuccess;
+  return { allSuccess, failedKeys: retryableFailedKeys, permanentFailedKeys };
 }
 
 // ── Unified flow (install / uninstall) ──
@@ -319,16 +352,7 @@ async function runFlow(isUninstall) {
       if (result === "exit") return "exit";
       step = 4;
     } else if (step === 4) {
-      let attempt = 0;
-      let allSuccess = false;
-      while (attempt < 3) {
-        allSuccess = await stepExecute(selectedSkillIds, selectedToolIds, installedTools, isUninstall);
-        if (allSuccess) break;
-        attempt++;
-        if (attempt < 3) {
-          console.log(chalk.yellow(TERM_GUTTER + `第 ${attempt} 次重试...\n`));
-        }
-      }
+      const { allSuccess, failedKeys } = await stepExecute(selectedSkillIds, selectedToolIds, installedTools, isUninstall);
       if (allSuccess) {
         await input(
           {
@@ -339,7 +363,31 @@ async function runFlow(isUninstall) {
         ).catch(() => {});
         return "exit";
       } else {
-        console.log(chalk.red(TERM_GUTTER + "❌ 重试 3 次后仍有失败，请手动检查。\n"));
+        // 卸载操作失败是"未安装"，重试无意义；安装操作失败可重试
+        if (!isUninstall && failedKeys.size > 0) {
+          let attempt = 1;
+          let retrySuccess = false;
+          let retryFailedKeys = failedKeys;
+          while (attempt < 3) {
+            console.log(chalk.yellow(TERM_GUTTER + `第 ${attempt} 次重试（${retryFailedKeys.size} 项）...\n`));
+            const retryResult = await stepExecute(selectedSkillIds, selectedToolIds, installedTools, isUninstall, retryFailedKeys);
+            retrySuccess = retryResult.allSuccess;
+            retryFailedKeys = retryResult.failedKeys;
+            if (retrySuccess) break;
+            attempt++;
+          }
+          if (retrySuccess) {
+            await input(
+              {
+                message: "按任意键退出...",
+                theme: { prefix: chalk.cyan(" ◆"), style: { highlight: (t) => chalk.cyan(t) } },
+              },
+              inquirerContext
+            ).catch(() => {});
+            return "exit";
+          }
+        }
+        console.log(chalk.red(TERM_GUTTER + "❌ 操作未能全部成功，请手动检查。\n"));
         await input(
           {
             message: "按任意键返回主菜单...",

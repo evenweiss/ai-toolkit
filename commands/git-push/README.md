@@ -1,4 +1,4 @@
-# skill-git-push
+# git-push
 
 Code review + commit + push workflow for AI coding agents.
 
@@ -41,16 +41,16 @@ Code review + commit + push workflow for AI coding agents.
 
 ```bash
 # Claude Code
-cp skills/skill-git-push/SKILL.md ~/.claude/commands/git-push.md
+cp commands/git-push/SKILL.md ~/.claude/commands/git-push.md
 
 # Cursor
-cp skills/skill-git-push/SKILL.md ~/.cursor/commands/git-push.md
+cp commands/git-push/SKILL.md ~/.cursor/commands/git-push.md
 
 # OpenCode
-cp -r skills/skill-git-push ~/.opencode/skills/
+cp -r commands/git-push ~/.opencode/skills/
 
 # Trae
-cp skills/skill-git-push/SKILL.md ~/.trae/commands/git-push.md
+cp commands/git-push/SKILL.md ~/.trae/commands/git-push.md
 ```
 
 ## License

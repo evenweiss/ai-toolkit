@@ -3,7 +3,7 @@ name: 孔网 Wiki
 description: 读写孔网 Wiki（wiki.kongfz.com，Confluence REST）
 ---
 
-# skill-kongfz-wiki
+# kongfz-wiki
 
 > Read and write company Wiki pages (wiki.kongfz.com) via Confluence REST API
 

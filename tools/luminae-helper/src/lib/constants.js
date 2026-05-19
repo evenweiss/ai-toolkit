@@ -10,73 +10,49 @@ export const TOOLS = [
     id: "claude-code",
     name: "Claude Code",
     command: "claude",
-    installMode: "file",
-    skillsDir: () => join(homedir(), ".claude", "commands"),
+    commandDir: () => join(homedir(), ".claude", "commands"),
+    skillDir: () => join(homedir(), ".claude", "skills"),
     installHint: "npm install -g @anthropic-ai/claude-code",
+  },
+  {
+    id: "codex",
+    name: "Codex",
+    command: "codex",
+    commandDir: null,
+    skillDir: () => join(homedir(), ".codex", "skills"),
+    installHint: "npm install -g @openai/codex",
   },
   {
     id: "cursor",
     name: "Cursor",
     command: "cursor",
-    installMode: "file",
-    skillsDir: () => join(homedir(), ".cursor", "commands"),
+    commandDir: null,
+    skillDir: () => join(homedir(), ".cursor", "skills"),
     installHint: "Download from https://cursor.com",
+  },
+  {
+    id: "hermes-agent",
+    name: "Hermes Agent",
+    command: "hermes",
+    commandDir: null,
+    skillDir: () => join(homedir(), ".hermes", "skills"),
+    installHint: "pip install hermes-ai",
   },
   {
     id: "opencode",
     name: "OpenCode",
     command: "opencode",
-    installMode: "dir",
-    skillsDir: () => join(homedir(), ".opencode", "skills"),
+    commandDir: null,
+    skillDir: () => join(homedir(), ".opencode", "skills"),
     installHint: "npm install -g opencode-ai",
   },
   {
     id: "trae",
     name: "Trae",
     command: "trae",
-    installMode: "file",
-    skillsDir: () => join(homedir(), ".trae", "commands"),
+    commandDir: () => join(homedir(), ".trae", "commands"),
+    skillDir: null,
     installHint: "Download from https://trae.ai",
-  },
-  {
-    id: "openclaw",
-    name: "OpenClaw",
-    command: "openclaw",
-    installMode: "dir",
-    skillsDir: () => join(homedir(), ".openclaw", "skills"),
-    installHint: "npm install -g openclaw",
-  },
-  {
-    id: "nanobot",
-    name: "Nanobot",
-    command: "nanobot",
-    installMode: "dir",
-    skillsDir: () => join(homedir(), ".nanobot", "skills"),
-    installHint: "pip install nanobot",
-  },
-  {
-    id: "hermes-agent",
-    name: "Hermes Agent",
-    command: "hermes",
-    installMode: "dir",
-    skillsDir: () => join(homedir(), ".hermes", "skills"),
-    installHint: "pip install hermes-ai",
-  },
-  {
-    id: "zeroclaw",
-    name: "ZeroClaw",
-    command: "zeroclaw",
-    installMode: "dir",
-    skillsDir: () => join(homedir(), ".zeroclaw", "skills"),
-    installHint: "npm install -g zeroclaw",
-  },
-  {
-    id: "codex",
-    name: "Codex",
-    command: "codex",
-    installMode: "dir",
-    skillsDir: () => join(homedir(), ".codex", "skills"),
-    installHint: "npm install -g @openai/codex",
   },
 ];
 
@@ -111,16 +87,21 @@ function parseSkillMeta(skillId, content) {
     for (const line of fmMatch[1].split("\n")) {
       const m = line.match(/^(\w+):\s*(.+)/);
       if (m) {
-        if (m[1] === "name") name = m[2].trim();
-        if (m[1] === "description") description = m[2].trim();
+        let value = m[2].trim();
+        // Strip surrounding quotes (single or double) from YAML values
+        if ((value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
+        if (m[1] === "name") name = value;
+        if (m[1] === "description") description = value;
       }
     }
   }
 
-  // Default name: skillId without "skill-" prefix, capitalize words
+  // Default name: skillId, capitalize words separated by hyphens
   if (!name) {
     name = skillId
-      .replace(/^skill-/, "")
       .replace(/(^|-)(\w)/g, (_, p, c) => (p === "-" ? " " : "") + c.toUpperCase());
   }
 
@@ -134,47 +115,101 @@ function parseSkillMeta(skillId, content) {
 }
 
 /**
- * Generate destPath for a skill+tool combo based on installMode.
- * - file mode: <skillsDir>/<shortName>.md
- * - dir mode:  <skillsDir>/<skillId>/
+ * Generate installTargets for an entry based on tool capability.
+ * - skillType "command" + tool supports commandDir → file mode (commands/)
+ * - skillType "command" + tool only supports skillDir → fallback dir mode
+ * - skillType "skill"   + tool supports skillDir   → dir mode (skills/)
+ * - skillType "skill"   + tool only supports commandDir → fallback file mode
+ * - tool supports neither → skip
  */
-function generateDestPath(tool, skillId) {
-  const shortName = skillId.replace(/^skill-/, "");
-  if (tool.installMode === "dir") {
-    return () => join(tool.skillsDir(), skillId);
+function generateInstallTargets(skillId, skillType) {
+  const targets = [];
+  for (const tool of TOOLS) {
+    const supportsCommand = Boolean(tool.commandDir);
+    const supportsSkill = Boolean(tool.skillDir);
+
+    if (skillType === "command") {
+      if (supportsCommand) {
+        targets.push({
+          toolId: tool.id,
+          installMode: "file",
+          destPath: () => join(tool.commandDir(), `${skillId}.md`),
+        });
+      } else if (supportsSkill) {
+        // Fallback: tool only supports skills, install command as skill
+        targets.push({
+          toolId: tool.id,
+          installMode: "dir",
+          destPath: () => join(tool.skillDir(), skillId),
+        });
+      }
+    } else if (skillType === "skill") {
+      if (supportsSkill) {
+        targets.push({
+          toolId: tool.id,
+          installMode: "dir",
+          destPath: () => join(tool.skillDir(), skillId),
+        });
+      } else if (supportsCommand) {
+        // Fallback: tool only supports commands, install skill as command
+        targets.push({
+          toolId: tool.id,
+          installMode: "file",
+          destPath: () => join(tool.commandDir(), `${skillId}.md`),
+        });
+      }
+    }
   }
-  return () => join(tool.skillsDir(), `${shortName}.md`);
+  return targets;
 }
 
 /**
- * Scan skills/ directory and build SKILLS array automatically.
+ * Scan commands/ and skills/ directories and build SKILLS array automatically.
  * Each subdirectory containing a SKILL.md is a valid skill.
+ * - commands/<skillId>/ → type: "command"
+ * - skills/<skillId>/   → type: "skill"
  */
 export function discoverSkills() {
-  const skillsRoot = join(getPackageDir(), "skills");
-  if (!existsSync(skillsRoot)) return [];
-
+  const packageDir = getPackageDir();
   const skills = [];
-  for (const entry of readdirSync(skillsRoot)) {
-    const skillPath = join(skillsRoot, entry);
-    if (!statSync(skillPath).isDirectory()) continue;
 
-    const skillFile = join(skillPath, "SKILL.md");
-    if (!existsSync(skillFile)) continue;
+  const typeDirs = [
+    { dir: "commands", type: "command" },
+    { dir: "skills", type: "skill" },
+  ];
 
-    const skillId = entry;
-    const content = readFileSync(skillFile, "utf-8");
-    const { name, description } = parseSkillMeta(skillId, content);
+  const seenIds = new Set();
 
-    skills.push({
-      id: skillId,
-      name,
-      description,
-      installTargets: TOOLS.map((tool) => ({
-        toolId: tool.id,
-        destPath: generateDestPath(tool, skillId),
-      })),
-    });
+  for (const { dir, type } of typeDirs) {
+    const typePath = join(packageDir, dir);
+    if (!existsSync(typePath)) continue;
+
+    for (const entry of readdirSync(typePath)) {
+      const skillPath = join(typePath, entry);
+      if (!statSync(skillPath).isDirectory()) continue;
+
+      const skillFile = join(skillPath, "SKILL.md");
+      if (!existsSync(skillFile)) continue;
+
+      const skillId = entry;
+
+      if (seenIds.has(skillId)) {
+        console.warn(`[luminae-helper] 警告：skillId "${skillId}" 在 commands/ 和 skills/ 中重复，仅使用 commands/ 下的条目`);
+        continue;
+      }
+      seenIds.add(skillId);
+
+      const content = readFileSync(skillFile, "utf-8");
+      const { name, description } = parseSkillMeta(skillId, content);
+
+      skills.push({
+        id: skillId,
+        name,
+        description,
+        type,
+        installTargets: generateInstallTargets(skillId, type),
+      });
+    }
   }
 
   return skills;
@@ -196,8 +231,14 @@ export function detectInstalledTools() {
 
 /**
  * Find skill source directory bundled inside this package.
- * Skills are at <luminae-helper>/skills/<skillId>/
+ * - command: <luminae-helper>/commands/<skillId>/
+ * - skill:   <luminae-helper>/skills/<skillId>/
  */
 export function getSkillSourcePath(skillId) {
-  return join(getPackageDir(), "skills", skillId);
+  const skill = SKILLS.find(s => s.id === skillId);
+  if (!skill) {
+    throw new Error(`Unknown skillId: "${skillId}" — not found in discovered skills`);
+  }
+  const subDir = skill.type === "command" ? "commands" : "skills";
+  return join(getPackageDir(), subDir, skillId);
 }

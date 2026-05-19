@@ -12,12 +12,14 @@
     "src/lib/*.js",
     "src/utils/*.js",
     "scripts/sync-skills.js",
+    "commands/",
     "skills/",
     "README.md"
   ],
   "scripts": {
     "start": "node src/cli.js",
     "dev": "node --watch src/cli.js",
+    "test": "vitest run",
     "sync-skills": "node scripts/sync-skills.js",
     "prepare": "node scripts/sync-skills.js",
     "prepublishOnly": "node scripts/sync-skills.js --strict",
@@ -52,5 +54,8 @@
     "chalk": "^5.3.0",
     "gradient-string": "^3.0.0",
     "wcwidth": "^1.0.1"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.6"
   }
 }

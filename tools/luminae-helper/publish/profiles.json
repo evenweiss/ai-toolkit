@@ -5,7 +5,7 @@
       "publishConfig": {
         "registry": "https://registry.npmjs.org/"
       },
-      "skills": ["skill-identity", "skill-git-commit", "skill-git-commit-msg", "skill-git-push"]
+      "skills": ["identity", "git-commit", "git-commit-msg", "git-push"]
     },
     "kfz": {
       "comment": "发布到孔夫子私服：打包 monorepo 同步后的全部 skill；npm 包名与 npmjs 区分",

@@ -6,6 +6,28 @@ import { TOOLS, SKILLS, discoverSkills, detectInstalledTools, getSkillSourcePath
 import { installSkillToTool, uninstallSkillFromTool } from "../src/lib/installer.js";
 import { commandExists } from "../src/utils/platform.js";
 
+function withTempTarget(skill, installMode) {
+  const tmpDir = join(tmpdir(), "luminae-helper-test-" + Date.now() + "-" + Math.random().toString(16).slice(2));
+  return {
+    skill: {
+      ...skill,
+      installTargets: [
+        {
+          toolId: "test-tool",
+          installMode,
+          destPath: () => installMode === "dir" ? join(tmpDir, skill.id) : join(tmpDir, `${skill.id}.md`),
+        },
+      ],
+    },
+    tool: {
+      id: "test-tool",
+      name: "Test Tool",
+    },
+    destPath: installMode === "dir" ? join(tmpDir, skill.id) : join(tmpDir, `${skill.id}.md`),
+    tmpDir,
+  };
+}
+
 describe("constants.js", () => {
   describe("TOOLS", () => {
     it("should have at least 1 tool", () => {
@@ -17,17 +39,18 @@ describe("constants.js", () => {
         expect(tool).toHaveProperty("id");
         expect(tool).toHaveProperty("name");
         expect(tool).toHaveProperty("command");
-        expect(tool).toHaveProperty("installMode");
-        expect(tool).toHaveProperty("skillsDir");
+        expect(tool).toHaveProperty("commandDir");
+        expect(tool).toHaveProperty("skillDir");
         expect(tool).toHaveProperty("installHint");
-        expect(["file", "dir"]).toContain(tool.installMode);
+        expect(tool.commandDir || tool.skillDir).toBeTruthy();
       }
     });
   });
 
   describe("discoverSkills", () => {
-    it("should find skills from skills/ directory", () => {
-      expect(SKILLS.length).toBeGreaterThanOrEqual(3);
+    it("should find entries from commands/ and skills/ directories", () => {
+      expect(SKILLS.some(s => s.type === "command")).toBe(true);
+      expect(SKILLS.some(s => s.type === "skill")).toBe(true);
     });
 
     it("each skill has id, name, description, installTargets", () => {
@@ -41,7 +64,7 @@ describe("constants.js", () => {
     });
 
     it("skill with YAML frontmatter should parse name and description", () => {
-      const identity = SKILLS.find(s => s.id === "skill-identity");
+      const identity = SKILLS.find(s => s.id === "identity");
       expect(identity).toBeDefined();
       expect(identity.name).toBe("Identity");
     });
@@ -56,18 +79,59 @@ describe("constants.js", () => {
     });
 
     it("file mode destPath ends with .md", () => {
-      const skill = SKILLS[0];
-      const target = skill.installTargets.find(t => t.toolId === "claude-code");
+      const skill = SKILLS.find(s => s.id === "kongfz-jira");
+      const target = skill.installTargets.find(t => t.toolId === "trae");
       const path = target.destPath();
       expect(path.endsWith(".md")).toBe(true);
     });
 
     it("dir mode destPath ends with skillId", () => {
-      const skill = SKILLS[0];
+      const skill = SKILLS.find(s => s.id === "identity");
       const target = skill.installTargets.find(t => t.toolId === "hermes-agent");
       const path = target.destPath();
       expect(path.endsWith(".md")).toBe(false);
       expect(path.endsWith(skill.id)).toBe(true);
+    });
+
+    it("routes skills and commands to command-only tools as command files", () => {
+      const command = SKILLS.find(s => s.id === "identity");
+      const skill = SKILLS.find(s => s.id === "kongfz-jira");
+
+      const commandTarget = command.installTargets.find(t => t.toolId === "trae");
+      const skillTarget = skill.installTargets.find(t => t.toolId === "trae");
+
+      expect(commandTarget.installMode).toBe("file");
+      expect(commandTarget.destPath()).toMatch(/[\\/]identity\.md$/);
+      expect(skillTarget.installMode).toBe("file");
+      expect(skillTarget.destPath()).toMatch(/[\\/]kongfz-jira\.md$/);
+    });
+
+    it("routes skills and commands to skill-only tools as skill directories", () => {
+      const command = SKILLS.find(s => s.id === "identity");
+      const skill = SKILLS.find(s => s.id === "kongfz-jira");
+
+      const commandTarget = command.installTargets.find(t => t.toolId === "hermes-agent");
+      const skillTarget = skill.installTargets.find(t => t.toolId === "hermes-agent");
+
+      expect(commandTarget.installMode).toBe("dir");
+      expect(commandTarget.destPath()).toMatch(/[\\/]identity$/);
+      expect(skillTarget.installMode).toBe("dir");
+      expect(skillTarget.destPath()).toMatch(/[\\/]kongfz-jira$/);
+    });
+
+    it("routes command entries to commandDir and skill entries to skillDir for tools that support both", () => {
+      const command = SKILLS.find(s => s.id === "identity");
+      const skill = SKILLS.find(s => s.id === "kongfz-jira");
+
+      const commandTarget = command.installTargets.find(t => t.toolId === "claude-code");
+      const skillTarget = skill.installTargets.find(t => t.toolId === "claude-code");
+
+      // command 源 → file 模式装到 commandDir
+      expect(commandTarget.installMode).toBe("file");
+      expect(commandTarget.destPath()).toMatch(/[\\/]commands[\\/]identity\.md$/);
+      // skill 源 → dir 模式装到 skillDir
+      expect(skillTarget.installMode).toBe("dir");
+      expect(skillTarget.destPath()).toMatch(/[\\/]skills[\\/]kongfz-jira$/);
     });
   });
 
@@ -82,9 +146,14 @@ describe("constants.js", () => {
   });
 
   describe("getSkillSourcePath", () => {
-    it("returns a path ending with skills/<skillId>", () => {
-      const path = getSkillSourcePath("skill-identity");
-      expect(path).toMatch(/skills\/skill-identity$/);
+    it("returns a path ending with commands/<skillId> for command entries", () => {
+      const path = getSkillSourcePath("identity");
+      expect(path).toMatch(/commands\/identity$/);
+    });
+
+    it("returns a path ending with skills/<skillId> for skill entries", () => {
+      const path = getSkillSourcePath("kongfz-jira");
+      expect(path).toMatch(/skills\/kongfz-jira$/);
     });
   });
 });
@@ -93,104 +162,98 @@ describe("constants.js", () => {
 describe("installer.js", () => {
   describe("installSkillToTool", () => {
     it("should install a skill in file mode", () => {
-      const claude = TOOLS.find(t => t.id === "claude-code");
-      const skill = SKILLS.find(s => s.id === "skill-identity");
-      const result = installSkillToTool(skill, claude);
+      const { skill, tool, destPath, tmpDir } = withTempTarget(SKILLS.find(s => s.id === "kongfz-jira"), "file");
+      const result = installSkillToTool(skill, tool);
       expect(result.success).toBe(true);
       expect(result.message).toContain("Installed to");
-      const destPath = skill.installTargets.find(t => t.toolId === "claude-code").destPath();
-      if (existsSync(destPath)) rmSync(destPath);
+      expect(existsSync(destPath)).toBe(true);
+      if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true, force: true });
     });
 
     it("should install a skill in dir mode", () => {
-      const hermes = TOOLS.find(t => t.id === "hermes-agent");
-      const skill = SKILLS.find(s => s.id === "skill-identity");
-      const result = installSkillToTool(skill, hermes);
+      const { skill, tool, destPath, tmpDir } = withTempTarget(SKILLS.find(s => s.id === "identity"), "dir");
+      const result = installSkillToTool(skill, tool);
       expect(result.success).toBe(true);
-      const destPath = skill.installTargets.find(t => t.toolId === "hermes-agent").destPath();
       if (existsSync(destPath)) rmSync(destPath, { recursive: true, force: true });
+      if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true, force: true });
     });
 
     it("should fail if skill source not found", () => {
       const tmpDir = join(tmpdir(), "luminae-helper-test-" + Date.now());
       const fakeSkill = {
-        id: "skill-nonexistent",
+        id: "nonexistent",
         name: "Fake",
         description: "Nope",
         installTargets: TOOLS.map(t => ({
           toolId: t.id,
+          installMode: "file",
           destPath: () => join(tmpDir, "fake.md"),
         })),
       };
-      const claude = TOOLS.find(t => t.id === "claude-code");
-      const result = installSkillToTool(fakeSkill, claude);
+      const result = installSkillToTool(fakeSkill, { id: TOOLS[0].id, name: TOOLS[0].name });
       expect(result.success).toBe(false);
-      expect(result.message).toContain("not found");
+      expect(result.message).toContain("Unknown skillId");
     });
   });
 
   describe("uninstallSkillFromTool", () => {
     it("should uninstall a file-mode skill after installing", () => {
-      const claude = TOOLS.find(t => t.id === "claude-code");
-      const skill = SKILLS.find(s => s.id === "skill-identity");
+      const { skill, tool, tmpDir } = withTempTarget(SKILLS.find(s => s.id === "kongfz-jira"), "file");
 
-      const installResult = installSkillToTool(skill, claude);
+      const installResult = installSkillToTool(skill, tool);
       expect(installResult.success).toBe(true);
 
-      const result = uninstallSkillFromTool(skill, claude);
+      const result = uninstallSkillFromTool(skill, tool);
       expect(result.success).toBe(true);
       expect(result.message).toContain("Uninstalled");
+      if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true, force: true });
     });
 
     it("should uninstall a dir-mode skill after installing", () => {
-      const hermes = TOOLS.find(t => t.id === "hermes-agent");
-      const skill = SKILLS.find(s => s.id === "skill-identity");
+      const { skill, tool, tmpDir } = withTempTarget(SKILLS.find(s => s.id === "identity"), "dir");
 
-      const installResult = installSkillToTool(skill, hermes);
+      const installResult = installSkillToTool(skill, tool);
       expect(installResult.success).toBe(true);
 
-      const result = uninstallSkillFromTool(skill, hermes);
+      const result = uninstallSkillFromTool(skill, tool);
       expect(result.success).toBe(true);
+      if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true, force: true });
     });
 
     it("should return failure if not installed", () => {
-      const claude = TOOLS.find(t => t.id === "claude-code");
-      const skill = SKILLS.find(s => s.id === "skill-identity");
-      const destPath = skill.installTargets.find(t => t.toolId === "claude-code").destPath();
-      if (existsSync(destPath)) rmSync(destPath);
+      const { skill, tool, tmpDir } = withTempTarget(SKILLS.find(s => s.id === "kongfz-jira"), "file");
 
-      const result = uninstallSkillFromTool(skill, claude);
+      const result = uninstallSkillFromTool(skill, tool);
       expect(result.success).toBe(false);
       expect(result.message).toContain("Not installed");
+      if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true, force: true });
     });
   });
 
   describe("install then verify content", () => {
-    it("installed SKILL.md content should match source", () => {
-      const claude = TOOLS.find(t => t.id === "claude-code");
-      const skill = SKILLS.find(s => s.id === "skill-identity");
+    it("installed SKILL.md content includes source plus managed-by marker", () => {
+      const { skill, tool, destPath, tmpDir } = withTempTarget(SKILLS.find(s => s.id === "kongfz-jira"), "file");
 
-      installSkillToTool(skill, claude);
-      const destPath = skill.installTargets.find(t => t.toolId === "claude-code").destPath();
+      installSkillToTool(skill, tool);
       const srcPath = join(getSkillSourcePath(skill.id), "SKILL.md");
 
       const destContent = readFileSync(destPath, "utf-8");
       const srcContent = readFileSync(srcPath, "utf-8");
-      expect(destContent).toBe(srcContent);
+      // 安装后的文件包含 managed-by 标识
+      expect(destContent).toContain("managed-by: luminae-helper");
+      // 除标识外内容与源一致（去掉标识行后应等于源内容）
+      expect(destContent.replace("managed-by: luminae-helper\n", "")).toBe(srcContent);
 
-      rmSync(destPath);
+      rmSync(tmpDir, { recursive: true, force: true });
     });
 
     it("dir mode should copy all files from skill directory", () => {
-      const hermes = TOOLS.find(t => t.id === "hermes-agent");
-      const skill = SKILLS.find(s => s.id === "skill-identity");
+      const { skill, tool, destPath, tmpDir } = withTempTarget(SKILLS.find(s => s.id === "identity"), "dir");
 
-      installSkillToTool(skill, hermes);
-      const destDir = skill.installTargets.find(t => t.toolId === "hermes-agent").destPath();
+      installSkillToTool(skill, tool);
+      expect(existsSync(join(destPath, "SKILL.md"))).toBe(true);
 
-      expect(existsSync(join(destDir, "SKILL.md"))).toBe(true);
-
-      rmSync(destDir, { recursive: true, force: true });
+      rmSync(tmpDir, { recursive: true, force: true });
     });
   });
 });

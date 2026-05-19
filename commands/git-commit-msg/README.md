@@ -1,4 +1,4 @@
-# skill-git-commit
+# git-commit-msg
 
 Smart commit message generator with Conventional Commits format.
 
@@ -53,16 +53,16 @@ Smart commit message generator with Conventional Commits format.
 
 ```bash
 # Claude Code
-cp skills/skill-git-commit/SKILL.md ~/.claude/commands/git-commit.md
+cp commands/git-commit-msg/SKILL.md ~/.claude/commands/git-commit-msg.md
 
 # Cursor
-cp skills/skill-git-commit/SKILL.md ~/.cursor/commands/git-commit.md
+cp commands/git-commit-msg/SKILL.md ~/.cursor/commands/git-commit-msg.md
 
 # OpenCode
-cp -r skills/skill-git-commit ~/.opencode/skills/
+cp -r commands/git-commit-msg ~/.opencode/skills/
 
 # Trae
-cp skills/skill-git-commit/SKILL.md ~/.trae/commands/git-commit.md
+cp commands/git-commit-msg/SKILL.md ~/.trae/commands/git-commit-msg.md
 ```
 
 ## License
