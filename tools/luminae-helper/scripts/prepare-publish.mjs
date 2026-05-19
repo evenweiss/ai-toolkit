@@ -247,9 +247,19 @@ function main() {
   copyDir(join(packageRoot, "src"), join(staging, "src"));
   copySkillSubsets(skillIds, staging);
 
-  const readme = join(packageRoot, "README.md");
-  if (existsSync(readme)) {
-    cpSync(readme, join(staging, "README.md"));
+  // README：优先使用 profile 专属（README.<profile>.md），缺则 fallback 到 README.md
+  const profileReadme = join(packageRoot, `README.${profileName}.md`);
+  const defaultReadme = join(packageRoot, "README.md");
+  const readmeSrc = existsSync(profileReadme) ? profileReadme : defaultReadme;
+  if (existsSync(readmeSrc)) {
+    cpSync(readmeSrc, join(staging, "README.md"));
+    console.log(`[prepare-publish] README: ${readmeSrc}`);
+  }
+
+  // CHANGELOG 也一起拷过去（如果存在），方便包页面看版本变更
+  const changelog = join(packageRoot, "CHANGELOG.md");
+  if (existsSync(changelog)) {
+    cpSync(changelog, join(staging, "CHANGELOG.md"));
   }
 
   const basePkg = JSON.parse(

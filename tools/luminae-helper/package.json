@@ -1,6 +1,6 @@
 {
   "name": "luminae-helper",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Install AI skills to coding tools (Claude Code, Cursor, OpenCode, Trae, etc.)",
   "type": "module",
   "main": "src/cli.js",
