@@ -1,70 +1,102 @@
 # luminae-helper
 
-AI Skill 安装器 — 将 ai-toolkit 项目中的 skill 安装到本地 AI 编码工具。
+将 ai-toolkit 项目中的 skill 和 command 安装到本地 AI 编码工具的交互式 CLI。
+
+> 双源发布：公开版（`luminae-helper`，npmjs.org）+ 孔夫子私服版（`kfz-skills-helper`，内网）。两个包功能一致，仅 skill 集合和 registry 不同。
 
 ## 功能
 
-- **多选交互**：Skill 和目标工具均支持 Checkbox 多选
-- **自动检测**：自动检测本机已安装的 AI 工具
-- **导航支持**：每个步骤均支持返回上一步和退出
-  - Checkbox 步骤：Esc 返回上一步，Ctrl+C 退出
-  - 预览确认步骤：显式选项（确认/返回/退出）
-- **安装/卸载**：支持安装和卸载操作
-
-## 支持的工具
-
-| 工具 | 命令 | Skill 安装方式 |
-|------|------|---------------|
-| Claude Code | `claude` | `~/.claude/commands/<skill>.md` |
-| Cursor | `cursor` | `~/.cursor/commands/<skill>.md` |
-| OpenCode | `opencode` | `~/.opencode/skills/<skill>/` (目录) |
-| Trae | `trae` | `~/.trae/commands/<skill>.md` |
-| OpenClaw | `openclaw` | `~/.openclaw/skills/<skill>/` (目录) |
-| Nanobot | `nanobot` | `~/.nanobot/skills/<skill>/` (目录) |
-| Hermes Agent | `hermes` | `~/.hermes/skills/<skill>/` (目录) |
-| ZeroClaw | `zeroclaw` | `~/.zeroclaw/skills/<skill>/` (目录) |
+- **多选交互**：skill 和目标工具均支持 Checkbox 多选
+- **自动检测**：通过 `which`/`where` 检测本机已安装的 AI 工具
+- **导航支持**：每步均可返回上一步或退出
+- **安装防护**：往 SKILL.md 注入 `managed-by: luminae-helper` 标识，卸载时校验，避免误删用户文件
+- **失败重试**：安装失败自动重试 2 次；"不支持"等不可重试项单独汇总
+- **原子替换**：dir 模式安装先拷到临时目录，再 rename 替换；失败可回滚
 
 ## 安装
 
 ```bash
-# 进入工具目录
-cd tools/luminae-helper
+# npmjs.org（公开版）
+npm install -g luminae-helper
 
-# 安装依赖
-npm install
-
-# 链接到全局（可选）
-npm link
+# 孔夫子内网（私服版，含 kongfz-jira/kongfz-wiki 等内部 skill）
+npm install -g kfz-skills-helper --registry=http://maven.kongfz.com/repository/npm_local/
 ```
 
 ## 使用
 
 ```bash
-# 直接运行
-node src/cli.js
-
-# 或链接后
+# 交互模式（默认）
 luminae-helper
+
+# 查看版本
+luminae-helper --version
+luminae-helper -v
+
+# 检查是否有新版本
+luminae-helper outdated
 ```
+
+kfz-skills-helper 的命令完全独立：`kfz-skills-helper --version` / `kfz-skills-helper outdated`。两个包不共享 bin，可同时安装。
+
+## 支持的 AI 工具
+
+按 commands/ 和 skills/ 两种安装源路由，目标目录依据各工具官方支持：
+
+| 工具 | 命令 | commandDir | skillDir |
+|------|------|-----------|----------|
+| Claude Code | `claude` | `~/.claude/commands/` | `~/.claude/skills/` |
+| Codex | `codex` | — | `~/.codex/skills/` |
+| Cursor | `cursor` | — | `~/.cursor/skills/` |
+| Hermes Agent | `hermes` | — | `~/.hermes/skills/` |
+| OpenCode | `opencode` | — | `~/.opencode/skills/` |
+| Trae | `trae` | `~/.trae/commands/` | — |
+
+## 安装规则
+
+源目录决定优先安装方式，工具能力决定 fallback：
+
+| skill 源 | 工具能力 | 安装方式 |
+|---------|---------|---------|
+| `commands/` | 支持 commandDir | file 模式：`commandDir/<id>.md` |
+| `commands/` | 仅支持 skillDir | dir 模式（fallback）：`skillDir/<id>/` |
+| `skills/` | 支持 skillDir | dir 模式：`skillDir/<id>/` |
+| `skills/` | 仅支持 commandDir | file 模式（fallback）：`commandDir/<id>.md` |
+
+例：Claude Code（双模式）→ `commands/identity` 装到 `~/.claude/commands/identity.md`；`skills/kongfz-jira` 装到 `~/.claude/skills/kongfz-jira/`。
 
 ## 操作流程
 
-1. 选择 **安装** 或 **卸载**
-2. 多选 Skill（Checkbox，空格切换，回车确认）
-3. 多选目标工具（Checkbox，仅显示已安装的工具）
-4. 预览确认（确认 / 返回上一步 / 退出）
-5. 执行
+1. 主菜单：选择 **安装** 或 **卸载**
+2. 多选 skill/command（空格切换勾选，回车确认）
+3. 多选目标工具（仅显示本机已安装的）
+4. 预览确认
+5. 执行；失败时自动重试可重试项
 
-每一步都支持返回上一步和退出：
-- Checkbox 步骤：列表底部显示导航项（灰显，不可勾选），Esc 返回上一步，Ctrl+C 退出
-- 确认步骤：显式选择「返回上一步」或「退出」
+任何步骤可用 Esc 返回上一步、Ctrl+C 退出。
 
-## 添加新的 Skill
+## 添加新的 skill
 
-1. 在 **仓库根目录**（与 `tools/` 同级）创建 `skills/skill-your-skill/SKILL.md`（及可选 `README.md` 等）。此处为 Git 中的**唯一真源**。
-2. 在 `tools/luminae-helper` 下执行 `npm install` 或 `npm run sync-skills`，会把根目录 `skills/` 同步到本包内的 `skills/`（该目录已 `.gitignore`，勿在包内手改副本）。
-3. Skill 元数据与安装目标由 `src/lib/constants.js` 的 `discoverSkills()` 自动扫描包内 `skills/` 生成，一般无需再手写 `SKILLS` 数组。
+1. 在仓库根目录（与 `tools/` 同级）的 `commands/<id>/` 或 `skills/<id>/` 下创建 SKILL.md
+   - `commands/<id>/`：单文件命令型 skill，仅 SKILL.md 会被安装
+   - `skills/<id>/`：目录型 skill，整个目录会被安装（除了 `node_modules`、`.git` 等）
+2. SKILL.md 顶部用 YAML frontmatter 填 `name`/`description`（可选，缺省自动从 id 推导）
+3. 在 `tools/luminae-helper` 下执行 `npm install` 或 `npm run sync-skills`，把根目录真源同步到包内
+4. `discoverSkills()` 会自动扫描包内目录，无需手写注册
 
-## 发布 npm 包
+## 发布
 
-`prepublishOnly` 会在发布前以 `--strict` 运行同步：必须在 monorepo 中能找到根目录 `skills/`，否则发布失败，避免打出不含 Skill 的空包。
+```bash
+# 同时发布到 npmjs.org 和孔夫子内网
+npm run publish:all
+
+# 仅其中之一
+npm run publish:npmjs   # luminae-helper, 4 个公开 skill
+npm run publish:kfz     # kfz-skills-helper, 全部 skill
+```
+
+profile 配置见 `publish/profiles.json`。`prepublishOnly` 以 `--strict` 同步真源，缺真源直接失败避免发空包。
+
+## 变更日志
+
+见 [CHANGELOG.md](./CHANGELOG.md)。
