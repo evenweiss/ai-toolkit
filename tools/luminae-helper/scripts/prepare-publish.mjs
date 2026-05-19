@@ -116,11 +116,20 @@ function resolveSkillIds(profile, allIds) {
   return [...profile.skills];
 }
 
+/** 同步时跳过的目录名，与 installer.js COPY_SKIP_ENTRIES 保持一致 */
+const COPY_SKIP_ENTRIES = new Set(["node_modules", ".git", ".DS_Store", "Thumbs.db"]);
+
 /**
- * 递归拷贝目录。
+ * 递归拷贝目录，跳过 node_modules、.git 等不必要的条目。
  */
 function copyDir(from, to) {
-  cpSync(from, to, { recursive: true });
+  cpSync(from, to, {
+    recursive: true,
+    filter: (src) => {
+      const name = src.split(/[/\\]/).pop();
+      return !COPY_SKIP_ENTRIES.has(name);
+    },
+  });
 }
 
 /**

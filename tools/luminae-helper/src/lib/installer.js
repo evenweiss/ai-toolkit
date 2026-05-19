@@ -82,10 +82,33 @@ function copyDir(src, dest) {
     }
   }
   // 临时目录拷贝完成，替换目标
+  // 先备份旧目标，rename 失败时可恢复
+  const backupDest = dest + ".__bak__";
+  let hasBackup = false;
   if (existsSync(dest)) {
-    rmSync(dest, { recursive: true, force: true });
+    try {
+      renameSync(dest, backupDest);
+      hasBackup = true;
+    } catch {
+      // 无法重命名旧目录，直接删除
+      rmSync(dest, { recursive: true, force: true });
+    }
   }
-  renameSync(tmpDest, dest);
+  try {
+    renameSync(tmpDest, dest);
+  } catch (e) {
+    // 替换失败：尝试恢复备份
+    if (hasBackup && existsSync(backupDest)) {
+      try { renameSync(backupDest, dest); } catch { /* 恢复也失败，无法做更多 */ }
+    }
+    // 清理临时目录
+    if (existsSync(tmpDest)) rmSync(tmpDest, { recursive: true, force: true });
+    throw new Error(`替换目标目录失败: ${e.message}`);
+  }
+  // 成功后清理备份
+  if (hasBackup && existsSync(backupDest)) {
+    rmSync(backupDest, { recursive: true, force: true });
+  }
 }
 
 /**

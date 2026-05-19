@@ -88,6 +88,13 @@ function parseSkillMeta(skillId, content) {
       const m = line.match(/^(\w+):\s*(.+)/);
       if (m) {
         let value = m[2].trim();
+        // Strip YAML inline comments (unquoted # after value)
+        // But preserve # inside quoted strings
+        if (!((value.startsWith('"') && value.endsWith('"')) ||
+              (value.startsWith("'") && value.endsWith("'")))) {
+          const hashIdx = value.indexOf(" #");
+          if (hashIdx !== -1) value = value.slice(0, hashIdx).trim();
+        }
         // Strip surrounding quotes (single or double) from YAML values
         if ((value.startsWith('"') && value.endsWith('"')) ||
             (value.startsWith("'") && value.endsWith("'"))) {

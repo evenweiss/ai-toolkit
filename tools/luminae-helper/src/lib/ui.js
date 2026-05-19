@@ -352,7 +352,7 @@ async function runFlow(isUninstall) {
       if (result === "exit") return "exit";
       step = 4;
     } else if (step === 4) {
-      const { allSuccess, failedKeys } = await stepExecute(selectedSkillIds, selectedToolIds, installedTools, isUninstall);
+      const { allSuccess, failedKeys, permanentFailedKeys } = await stepExecute(selectedSkillIds, selectedToolIds, installedTools, isUninstall);
       if (allSuccess) {
         await input(
           {
@@ -368,15 +368,17 @@ async function runFlow(isUninstall) {
           let attempt = 1;
           let retrySuccess = false;
           let retryFailedKeys = failedKeys;
+          let accumulatedPermanent = new Set(permanentFailedKeys);
           while (attempt < 3) {
             console.log(chalk.yellow(TERM_GUTTER + `第 ${attempt} 次重试（${retryFailedKeys.size} 项）...\n`));
             const retryResult = await stepExecute(selectedSkillIds, selectedToolIds, installedTools, isUninstall, retryFailedKeys);
             retrySuccess = retryResult.allSuccess;
             retryFailedKeys = retryResult.failedKeys;
+            for (const k of retryResult.permanentFailedKeys) accumulatedPermanent.add(k);
             if (retrySuccess) break;
             attempt++;
           }
-          if (retrySuccess) {
+          if (retrySuccess && accumulatedPermanent.size === 0) {
             await input(
               {
                 message: "按任意键退出...",
@@ -385,7 +387,29 @@ async function runFlow(isUninstall) {
               inquirerContext
             ).catch(() => {});
             return "exit";
+          } else if (retrySuccess && accumulatedPermanent.size > 0) {
+            // 重试成功但仍有不可重试的失败项（如"不支持"）
+            console.log(chalk.yellow(TERM_GUTTER + `⚠ ${accumulatedPermanent.size} 项不可重试的操作已跳过（不支持或非本工具安装）\n`));
+            await input(
+              {
+                message: "按任意键返回主菜单...",
+                theme: { prefix: chalk.cyan(" ◆"), style: { highlight: (t) => chalk.cyan(t) } },
+              },
+              inquirerContext
+            ).catch(() => {});
+            return "back";
           }
+        } else if (permanentFailedKeys.size > 0 && failedKeys.size === 0) {
+          // 全部是 permanent 失败，无重试价值
+          console.log(chalk.yellow(TERM_GUTTER + `⚠ ${permanentFailedKeys.size} 项操作不可执行（不支持或非本工具安装），已跳过\n`));
+          await input(
+            {
+              message: "按任意键返回主菜单...",
+              theme: { prefix: chalk.cyan(" ◆"), style: { highlight: (t) => chalk.cyan(t) } },
+            },
+            inquirerContext
+          ).catch(() => {});
+          return "back";
         }
         console.log(chalk.red(TERM_GUTTER + "❌ 操作未能全部成功，请手动检查。\n"));
         await input(
